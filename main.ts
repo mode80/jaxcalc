@@ -73,6 +73,7 @@ function showEvalMe(eval_me: string) {
 function showStart() {
   digit_display.selectAll('*').remove()  
   txt.text("")
+  first_digits = []
 }
 
 function processFirst(input:string) {
@@ -80,11 +81,13 @@ function processFirst(input:string) {
     var i = first_digits.length
     while (i--) {
       var it = first_digits[i]
-      it.tran_x -= 100
+      it.tran_x -= 50
     }
   // draw new digit
     var new_digit = new Digit(input,digit_display)
+    new_digit.tran_x = 450 + (50 * first_digits.length)  // keep it all centered
     new_digit.render()
+  // add to list
     first_digits.push(new_digit)
 }
 
@@ -97,23 +100,28 @@ function processLast(input:string) {
 }
 
 class Digit {
+  
   public g: D3.Selection;
+  
   constructor(public digit: string, public container) {
     this.g = container.append('g')
-    this.tran_x = parseFloat(container.attr('width')) / 2  
- }
+  }
+ 
   private _tran_x=0;
   private _tran_y=0;
+  
   get tran_x() { return this._tran_x }
   set tran_x(x:any) {
     this._tran_x = x
     this.g.attr('transform','translate(' + this._tran_x + ',' + this._tran_y + ')')
   }
+  
   get tran_y() { return this._tran_y }
   set tran_y(y:any) {
     this._tran_y = y
     this.g.attr('transform','translate(' + this._tran_x + ',' + this._tran_y + ')')
   }
+
   render() {
     switch (this.digit) {
       case "1": this.drawOne(); break
@@ -155,9 +163,9 @@ class Digit {
   }
   private drawSix() {
     this.drawFive()
-    this.g.append('line').attr({ x1: 20, y1: 100, x2: 20, y2: 50, })
+    this.g.append('line').attr({ x1: 20, y1: 100, x2: 20, y2: 55, })
   }
-  private drawSeven() {
+  private drawAltSeven() {
     this.g.append('line').attr({ x1: 20, y1: 25, x2: 20, y2: 0, })
     this.g.append('line').attr({ x1: 20, y1: 0, x2: 80, y2: 0, })
     this.g.append('line').attr({ x1: 80, y1: 0, x2: 50, y2: 75, })
@@ -165,6 +173,15 @@ class Digit {
     this.g.append('line').attr({ x1: 80, y1: 75, x2: 80, y2: 100, })
     this.g.append('line').attr({ x1: 80, y1: 100, x2: 20, y2: 100, })
     this.g.append('line').attr({ x1: 20, y1: 100, x2: 20, y2: 75, })
+  }
+  private drawSeven() {
+    this.g.append('line').attr({ x1: 20, y1: 25, x2: 20, y2: 0, })
+    this.g.append('line').attr({ x1: 20, y1: 0, x2: 80, y2: 0, })
+    this.g.append('line').attr({ x1: 80, y1: 0, x2: 35, y2: 100, })
+    this.g.append('line').attr({ x1: 20, y1: 50, x2: 80, y2: 50, })
+    this.g.append('line').attr({ x1: 80, y1: 50, x2: 80, y2: 75, })
+    this.g.append('line').attr({ x1: 80, y1: 75, x2: 20, y2: 75, })
+    this.g.append('line').attr({ x1: 20, y1: 75, x2: 20, y2: 50, })
   }
   private drawEight() {
     this.g.append('line').attr({ x1: 50, y1: 0, x2: 80, y2: 30, })
