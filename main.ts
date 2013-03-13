@@ -27,8 +27,8 @@ function main() {
   // set up the drawing area
     txt.attr({ x: '50%', y: '20%' })
     digit_display.attr({
-      transform:'translate(0,300)',
-      height: 100, width: 600
+      transform:'translate(0,500)',
+      height: 100, width: 1000
     })
 
   // attach events
@@ -71,7 +71,8 @@ function showEvalMe(eval_me: string) {
 }
 
 function showStart() {
-  svg.selectAll('*').remove()  
+  digit_display.selectAll('*').remove()  
+  txt.text("")
 }
 
 function processFirst(input:string) {
@@ -115,30 +116,75 @@ class Digit {
   }
   render() {
     switch (this.digit) {
-      case "1":
-       this.g.append('line').attr({
-          x1: 50, y1: 0,
-          x2: 50, y2: 100,
-        })
-        break
-      case "2":
-        break
-      case "3":
-        break
-      case "4":
-        break
-      case "5":
-        break
-      case "6":
-        break
-      case "7":
-        break
-      case "8":
-        break
-      case "9":
-        break
-      case "0":
-        break
+      case "1": this.drawOne(); break
+      case "2": this.drawTwo(); break
+      case "3": this.drawThree(); break
+      case "4": this.drawFour(); break
+      case "5": this.drawFive(); break
+      case "6": this.drawSix(); break
+      case "7": this.drawSeven(); break
+      case "8": this.drawEight(); break
+      case "9": this.drawNine(); break
     }  
+
+  }
+  private drawOne() {
+    this.g.append('line').attr({ x1: 50, y1: 0, x2: 50, y2: 100, })
+  }
+  private drawTwo() {
+    this.g.append('line').attr({ x1: 80, y1: 0, x2: 20, y2: 100, })
+    this.g.append('line').attr({ x1: 20, y1: 100, x2: 80, y2: 100, })
+  }
+  private drawThree() {
+    this.g.append('line').attr({ x1: 20, y1: 0, x2: 80, y2: 50, })
+    this.g.append('line').attr({ x1: 80, y1: 50, x2: 20, y2: 50, })
+    this.g.append('line').attr({ x1: 80, y1: 50, x2: 20, y2: 100, })
+  }
+  private drawFour() {
+    this.g.append('line').attr({ x1: 20, y1: 0, x2: 20, y2: 50, })
+    this.g.append('line').attr({ x1: 20, y1: 50, x2: 80, y2: 50, })
+    this.g.append('line').attr({ x1: 80, y1: 50, x2: 80, y2: 100, })
+    this.g.append('line').attr({ x1: 70, y1: 0, x2: 70, y2: 50, })
+  }
+  private drawFive() {
+    this.g.append('line').attr({ x1: 80, y1: 0, x2: 20, y2: 0, })
+    this.g.append('line').attr({ x1: 20, y1: 0, x2: 20, y2: 50, })
+    this.g.append('line').attr({ x1: 20, y1: 50, x2: 80, y2: 50, })
+    this.g.append('line').attr({ x1: 80, y1: 50, x2: 80, y2: 100, })
+    this.g.append('line').attr({ x1: 80, y1: 100, x2: 20, y2: 100, })
+  }
+  private drawSix() {
+    this.drawFive()
+    this.g.append('line').attr({ x1: 20, y1: 100, x2: 20, y2: 50, })
+  }
+  private drawSeven() {
+    this.g.append('line').attr({ x1: 20, y1: 25, x2: 20, y2: 0, })
+    this.g.append('line').attr({ x1: 20, y1: 0, x2: 80, y2: 0, })
+    this.g.append('line').attr({ x1: 80, y1: 0, x2: 50, y2: 75, })
+    this.g.append('line').attr({ x1: 20, y1: 75, x2: 80, y2: 75, })
+    this.g.append('line').attr({ x1: 80, y1: 75, x2: 80, y2: 100, })
+    this.g.append('line').attr({ x1: 80, y1: 100, x2: 20, y2: 100, })
+    this.g.append('line').attr({ x1: 20, y1: 100, x2: 20, y2: 75, })
+  }
+  private drawEight() {
+    this.g.append('line').attr({ x1: 50, y1: 0, x2: 80, y2: 30, })
+    this.g.append('line').attr({ x1: 80, y1: 30, x2: 50, y2: 60, })
+    this.g.append('line').attr({ x1: 50, y1: 60, x2: 20, y2: 30, })
+    this.g.append('line').attr({ x1: 20, y1: 30, x2: 50, y2: 0, })
+    this.g.append('line').attr({ x1: 20, y1: 60, x2: 80, y2: 60, })
+    this.g.append('line').attr({ x1: 80, y1: 60, x2: 80, y2: 100, })
+    this.g.append('line').attr({ x1: 80, y1: 100, x2: 20, y2: 100, })
+    this.g.append('line').attr({ x1: 20, y1: 100, x2: 20, y2: 60, })
+  }
+  private drawNine() {
+    this.g.append('line').attr({ x1: 80, y1: 0, x2: 20, y2: 0, })
+    this.g.append('line').attr({ x1: 20, y1: 0, x2: 20, y2: 50, })
+    this.g.append('line').attr({ x1: 20, y1: 50, x2: 80, y2: 50, })
+    this.g.append('line').attr({ x1: 80, y1: 50, x2: 80, y2: 0, })
+    this.g.append('line').attr({ x1: 50, y1: 0, x2: 80, y2: 25, })
+    this.g.append('line').attr({ x1: 80, y1: 25, x2: 50, y2: 50, })
+    this.g.append('line').attr({ x1: 50, y1: 50, x2: 20, y2: 25, })
+    this.g.append('line').attr({ x1: 20, y1: 25, x2: 50, y2: 0, })
+    this.g.append('line').attr({ x1: 80, y1: 50, x2: 50, y2: 100, })
   }
 }
