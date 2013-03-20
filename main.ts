@@ -20,20 +20,26 @@ module calcsand {
     CLEAR: 'c',
   }
 
-  // d3 selection object vars
-  var svg = d3.select('svg')
-  var svg_w = parseFloat(svg.attr('width'))
-  var svg_h = parseFloat(svg.attr('height'))
-  var display = svg.append('g')
-  var body = d3.select('body')
-  var txt = svg.append('text')
+  // dimension vars
+  var svg_w = 768 , svg_h = 1024
+  var digit_w = 100, digit_h = 100 
+  var digit_x_margin = 0, digit_y_margin = 10
+  var svg_half_w = svg_w / 2
+  var svg_half_h = svg_h / 2
+  var digit_half_w = digit_w / 2
+  var digit_half_h = digit_h / 2
+  var digit_full_w = digit_w + (2 * digit_x_margin)      
+  var digit_full_h = digit_h + (2 * digit_y_margin)     
 
+  // d3 selection and dimension vars
+  var body = d3.select('body')
+  var svg = body.append('svg').attr({ width: svg_w, height: svg_h })
+  var display = svg.append('g')
 
   function main() {
 
     // set up the drawing area
-    txt.attr({ x: '50%', y: '20%' })
-    display.attr({ height: 1, width: 1, transform: 'translate(450,450)' }) // used for centering
+    display.attr({ height: 1, width: 1, transform: 'translate('+svg_half_w+','+svg_half_h+')' }) // used for centering
 
     // attach events
     body.on('keypress', onKeyPress)
@@ -80,7 +86,6 @@ module calcsand {
 
   function showStart() {
     svg.selectAll('line').remove()
-    txt.text("")
   }
 
   function showTerm(n:number, input: string) {
@@ -103,8 +108,7 @@ module calcsand {
   }
 
   function recenterDisplay() {
-    var x_offset =
-      (500 - (Math.max(term[1].length, term[2].length + operator.length) * 50))
+    var x_offset = (svg_half_w - (Math.max(term[1].length, term[2].length + operator.length) * digit_half_w))
     display
       .transition()
       .attr('transform', 'translate(' + x_offset + ',450)')
@@ -118,7 +122,7 @@ module calcsand {
       .attr('x2', (d) => { return d.x2 })
       .attr('y1', (d) => { return d.y1 })
       .attr('y2', (d) => { return d.y2 })
-      .attr('transform', (d) => { return 'translate(' + d.x_offset + ',' + d.y_offset + ')' })
+      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
     lines
       .enter()
       .append('line')
@@ -126,7 +130,7 @@ module calcsand {
       .attr('x2', (d) => { return d.x2 })
       .attr('y1', (d) => { return d.y1 })
       .attr('y2', (d) => { return d.y2 })
-      .attr('transform', (d) => { return 'translate(' + d.x_offset + ',' + d.y_offset + ')' })
+      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
       //.attr('opacity', 0)
       //.transition()
       .attr('opacity', 0.4)
@@ -146,74 +150,76 @@ module calcsand {
       while (term_n++ < 2) { // loop through terms
         var term_i = term_n-1 // term_i is a 0-based index whereas term_n is the 1-based ordinal
         var digit = term[term_n].charAt(digit_i)
+        var x_offset=(digit_full_w * digit_i)
+        var y_offset= (digit_full_h * term_i) 
         switch (digit) {
           case "":
             break
           case "0":
-            data.push({ x1: 50, y1: 50, x2: 50, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "1":
-            data.push({ x1: 50, y1: 00, x2: 50, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "2":
-            data.push({ x1: 80, y1: 00, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 99, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "3":
-            data.push({ x1: 20, y1: 00, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(20), y1: y(00), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "4":
-            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 70, y1: 00, x2: 70, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(70), y1: y(00), x2: x(70), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "5":
-            data.push({ x1: 80, y1: 00, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 99, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "6":
-            data.push({ x1: 80, y1: 00, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 99, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 99, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(99), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "7":
-            data.push({ x1: 20, y1: 25, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 00, x2: 80, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 00, x2: 35, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 80, y2: 75, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 75, x2: 20, y2: 75, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 75, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(20), y1: y(25), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(00), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(00), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(75), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(75), x2: x(20), y2: y(75), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(75), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "8":
-            data.push({ x1: 50, y1: 00, x2: 80, y2: 30, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 30, x2: 50, y2: 60, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 50, y1: 60, x2: 20, y2: 30, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 30, x2: 50, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 60, x2: 80, y2: 60, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 60, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 99, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 99, x2: 20, y2: 60, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(50), y1: y(00), x2: x(80), y2: y(30), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(30), x2: x(50), y2: y(60), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(50), y1: y(60), x2: x(20), y2: y(30), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(30), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(60), x2: x(80), y2: y(60), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(60), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(99), x2: x(20), y2: y(60), xoff: x_offset, yoff: y_offset })
             break
           case "9":
-            data.push({ x1: 80, y1: 00, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 80, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 50, y1: 00, x2: 80, y2: 25, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 25, x2: 50, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 50, y1: 50, x2: 20, y2: 25, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 20, y1: 25, x2: 50, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
-            data.push({ x1: 80, y1: 50, x2: 50, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(50), y1: y(00), x2: x(80), y2: y(25), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(25), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(50), y1: y(50), x2: x(20), y2: y(25), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(20), y1: y(25), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.push({ x1: x(80), y1: y(50), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
         } // end switch
 
@@ -223,5 +229,8 @@ module calcsand {
     return data
 
   } // end function 
+
+  function x(d) { return d * digit_w/100 }
+  function y(d) { return d * digit_h/100 }
 
 } // end module
