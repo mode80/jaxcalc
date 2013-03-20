@@ -2,19 +2,25 @@
 
 module calcsand {
 
+  // expression related vars
+  var eval_me = ""
+  var after_operator = false
+  var data = []
+  var term = [,"",""] 
+  var operator = ""
+
+  // valid input 'enum'
   var INPUT = {
     0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
     ADD: '+',
     SUBTRACT: '-',
     MULTIPLY: '*',
     DIVIDE: '/',
+    EQUALS: '=',
     CLEAR: 'c',
   }
-  var term1 = "", operator = "", term2 = ""
-  var eval_me = ""
-  var after_operator = false
-  var data = []
 
+  // d3 selection object vars
   var svg = d3.select('svg')
   var svg_w = parseFloat(svg.attr('width'))
   var svg_h = parseFloat(svg.attr('height'))
@@ -30,39 +36,46 @@ module calcsand {
     display.attr({ height: 1, width: 1, transform: 'translate(450,450)' }) // used for centering
 
     // attach events
-    body.on('keypress', onKeypress)
+    body.on('keypress', onKeyPress)
   }
   main()
 
   function isDigit(char: string): bool { return ("1234567890".indexOf(char) >= 0) }
   function isOperator(char: string): bool { return ("*-+/".indexOf(char) >= 0) }
 
-  function onKeypress() {
+  function onKeyPress() {
+    // translate keystrokes into generic input. gestures etc will come later
     var char_code = (<any>d3.event).which
     var char = String.fromCharCode(char_code)
     var input = ""
-    if (isDigit(char) || isOperator(char)) input = char
-    if (char_code == 13 || char == 'c') input = INPUT.CLEAR
+    if (isDigit(char)) input = char
+    if (isOperator(char)) input = char
+    if (char_code == 13 || char == '=') input = INPUT.EQUALS
+    if (char == 'c') input = INPUT.CLEAR
     processInput(input)
   }
 
-  function processInput(input: string) {
+  function processInput(input: string /** INPUT enum **/) {
     if (isDigit(input)) {
-      if (!after_operator) { processFirst(input) } else { processLast(input) }
-      showEvalMe(eval_me += input)
+      if (!after_operator)
+        showTerm(1, input)
+      else
+        showTerm(2, input)
     }
     else if (isOperator(input)) {
-      processOperator(input)
+      showOperator(input)
       after_operator = true
     }
     else if (input == INPUT.CLEAR) {
-      term1 = ""; term2 = ""; eval_me = "";
+      term[1] = ""; term[2] = "";
+      operator = "", after_operator = false;
+      eval_me = ""; data = []
       showStart()
     }
-  }
-
-  function showEvalMe(eval_me: string) {
-    txt.text(eval_me)
+    else if (input == INPUT.EQUALS) {
+      var answer = eval(term[1]+operator+term[2]) + ""
+      showAnswer(answer)
+    }
   }
 
   function showStart() {
@@ -70,116 +83,145 @@ module calcsand {
     txt.text("")
   }
 
-  function processFirst(input: string) {
+  function showTerm(n:number, input: string) {
     // regenerate line data for new input
-      term1 += input
-      data = numberToData(term1)
+      term[n] += input
+      data = makeRenderingData(term)
     // rerender new data
-      var lines = display.selectAll('line').data(data)
-      lines
-        .transition()
-        .attr('x1', (d) => { return d.x1 })
-        .attr('x2', (d) => { return d.x2 })
-        .attr('y1', (d) => { return d.y1 })
-        .attr('y2', (d) => { return d.y2 })
-        .attr('transform', (d) => { return d.transform })
-      lines
-        .enter()
-        .append('line')
-        .attr('x1', (d) => { return d.x1 })
-        .attr('x2', (d) => { return d.x2 })
-        .attr('y1', (d) => { return d.y1 })
-        .attr('y2', (d) => { return d.y2 })
-        .attr('transform', (d) => { return d.transform })
-      lines
-        .exit()
-        .remove()
-    // recenter display
-      display.attr('transform', 'translate(' + (500 - (term1.length * 50)) + ',450)')
+      renderData(data)
+      recenterDisplay()
   }
 
-  function processOperator(input: string) {
-    // arrange first number in prep for operator on last 
+  function showOperator(input: string) {
+    operator = input
+    recenterDisplay()
   }
 
-  function processLast(input: string) {
-    // show answer(?)
+  function showAnswer(answer: string) {
+    data = makeRenderingData(["",answer,""]) //TODO fix this ugly cludge
+    renderData(data)
   }
 
-  function numberToData(num: string) {
+  function recenterDisplay() {
+    var x_offset =
+      (500 - (Math.max(term[1].length, term[2].length + operator.length) * 50))
+    display
+      .transition()
+      .attr('transform', 'translate(' + x_offset + ',450)')
+  }
 
+  function renderData(data) {
+    var lines = display.selectAll('line').data(data)
+    lines
+      .transition()
+      .attr('x1', (d) => { return d.x1 })
+      .attr('x2', (d) => { return d.x2 })
+      .attr('y1', (d) => { return d.y1 })
+      .attr('y2', (d) => { return d.y2 })
+      .attr('transform', (d) => { return 'translate(' + d.x_offset + ',' + d.y_offset + ')' })
+    lines
+      .enter()
+      .append('line')
+      .attr('x1', (d) => { return d.x1 })
+      .attr('x2', (d) => { return d.x2 })
+      .attr('y1', (d) => { return d.y1 })
+      .attr('y2', (d) => { return d.y2 })
+      .attr('transform', (d) => { return 'translate(' + d.x_offset + ',' + d.y_offset + ')' })
+      //.attr('opacity', 0)
+      //.transition()
+      .attr('opacity', 0.4)
+    lines
+      .exit()
+      .remove()
+  }
+
+  function makeRenderingData(term:string[], operator?:string) {
+      
     var data = []
-    var i = -1, len = num.length
-    while (i++ < len) {
-      var digit = num.charAt(i)
-      switch (digit) {
-        case "1":
-          data.push({ x1: 50, y1: 0, x2: 50, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "2":
-          data.push({ x1: 80, y1: 0, x2: 20, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 100, x2: 80, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "3":
-          data.push({ x1: 20, y1: 0, x2: 80, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 20, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 20, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "4":
-          data.push({ x1: 20, y1: 0, x2: 20, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 50, x2: 80, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 80, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 70, y1: 0, x2: 70, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "5":
-          data.push({ x1: 80, y1: 0, x2: 20, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 0, x2: 20, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 50, x2: 80, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 80, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 100, x2: 20, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "6":
-          data.push({ x1: 80, y1: 0, x2: 20, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 0, x2: 20, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 50, x2: 80, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 80, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 100, x2: 20, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 100, x2: 20, y2: 55, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "7":
-          data.push({ x1: 20, y1: 25, x2: 20, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 0, x2: 80, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 0, x2: 35, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 50, x2: 80, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 80, y2: 75, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 75, x2: 20, y2: 75, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 75, x2: 20, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "8":
-          data.push({ x1: 50, y1: 0, x2: 80, y2: 30, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 30, x2: 50, y2: 60, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 50, y1: 60, x2: 20, y2: 30, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 30, x2: 50, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 60, x2: 80, y2: 60, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 60, x2: 80, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 100, x2: 20, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 100, x2: 20, y2: 60, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-        case "9":
-          data.push({ x1: 80, y1: 0, x2: 20, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 0, x2: 20, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 50, x2: 80, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 80, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 50, y1: 0, x2: 80, y2: 25, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 25, x2: 50, y2: 50, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 50, y1: 50, x2: 20, y2: 25, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 20, y1: 25, x2: 50, y2: 0, transform: 'translate(' + (100 * i) + ',0)' })
-          data.push({ x1: 80, y1: 50, x2: 50, y2: 100, transform: 'translate(' + (100 * i) + ',0)' })
-          break
-      }
+    var max_digit_n = Math.max(term[1].length,term[2].length)
 
-    }
+    var digit_i = max_digit_n
+    while (digit_i--) { // loop through each digit, starting with least significant 
+      var term_n = 0
+      while (term_n++ < 2) { // loop through terms
+        var term_i = term_n-1 // term_i is a 0-based index whereas term_n is the 1-based ordinal
+        var digit = term[term_n].charAt(digit_i)
+        switch (digit) {
+          case "":
+            break
+          case "0":
+            data.push({ x1: 50, y1: 50, x2: 50, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "1":
+            data.push({ x1: 50, y1: 00, x2: 50, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "2":
+            data.push({ x1: 80, y1: 00, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 99, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "3":
+            data.push({ x1: 20, y1: 00, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "4":
+            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 70, y1: 00, x2: 70, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "5":
+            data.push({ x1: 80, y1: 00, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 99, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "6":
+            data.push({ x1: 80, y1: 00, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 99, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 99, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "7":
+            data.push({ x1: 20, y1: 25, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 00, x2: 80, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 00, x2: 35, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 80, y2: 75, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 75, x2: 20, y2: 75, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 75, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "8":
+            data.push({ x1: 50, y1: 00, x2: 80, y2: 30, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 30, x2: 50, y2: 60, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 50, y1: 60, x2: 20, y2: 30, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 30, x2: 50, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 60, x2: 80, y2: 60, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 60, x2: 80, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 99, x2: 20, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 99, x2: 20, y2: 60, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+          case "9":
+            data.push({ x1: 80, y1: 00, x2: 20, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 00, x2: 20, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 50, x2: 80, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 80, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 50, y1: 00, x2: 80, y2: 25, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 25, x2: 50, y2: 50, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 50, y1: 50, x2: 20, y2: 25, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 20, y1: 25, x2: 50, y2: 00, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            data.push({ x1: 80, y1: 50, x2: 50, y2: 99, x_offset: (100 * digit_i), y_offset: (120 * term_i) })
+            break
+        } // end switch
+
+      } // end digit_i loop
+    } // end term_n loop 
+
     return data
 
-  }
-}
+  } // end function 
+
+} // end module

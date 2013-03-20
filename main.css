@@ -18,4 +18,5 @@
   svg line {
     stroke: black;
     stroke-width: 10px;
+    stroke-linecap:round;
   }
