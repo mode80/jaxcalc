@@ -5,12 +5,12 @@ module calcsand {
   // expression related vars
   var eval_me = ""
   var data = []
-  var term = [,"",""] 
+  var term = []; term[1] = "", term[2] = ""
   var operator = ""
   var answer = ""
   var after_operator = false
 
-  // valid input 'enum'
+  // valid input "enum"
   var INPUT = {
     0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
     ADD: '+',
@@ -49,9 +49,6 @@ module calcsand {
     body.on('keypress', onKeyPress)
 
   }
-
-  function isDigit(char: string): bool { return ("1234567890".indexOf(char) >= 0) }
-  function isOperator(char: string): bool { return ("*-+/".indexOf(char) >= 0) }
 
   function onKeyPress() {
     // translate keystrokes into generic input. gestures etc will come later
@@ -162,18 +159,24 @@ module calcsand {
   function makeRenderingData(term:string[], operator?:string) {
       
     var data = []
-    var max_digit_n = Math.max(term[1].length,term[2].length)
 
-    var digit_i = max_digit_n
+    // pad shortest term with spaces to keep same-significant digits in sync
+    term[1] = Array(Math.max(term[2].length-term[1].length+1,0)).join(" ") + term[1]
+    term[2] = Array(Math.max(term[1].length-term[2].length+1)).join(" ") + term[2]
+
+    // take each digit from each term in turn
+    var digit_inc = 0  // this will count up
+    var digit_i = Math.max(term[1].length,term[2].length) // this will count down
     while (digit_i--) { // loop through each digit, starting with least significant 
-      var term_n = 0
-      while (term_n++ < 2) { // loop through terms
-        var term_i = term_n-1 // term_i is a 0-based index whereas term_n is the 1-based ordinal
-        var digit = term[term_n].charAt(digit_i)
-        var x_offset=(digit_full_w * digit_i)
-        var y_offset= (digit_full_h * term_i) 
+      digit_inc++
+      var term_i = term.length - 1 
+      while (term_i--) { // loop (backwards) through each term
+        var term_n = term_i+1 // term_i is a 0-based index whereas term_n is the 1-based ordinal
+        var digit = term[term_n].substr(digit_i,1)
+        var x_offset = (digit_full_w * (digit_i) )
+        var y_offset = (digit_full_h * term_i) 
         switch (digit) {
-          case "":
+          case "", " ":
             break
           case "0":
             data.push({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
@@ -246,11 +249,18 @@ module calcsand {
       } // end digit_i loop
     } // end term_n loop 
 
+    term[1] = term[1].trim()
+    term[2] = term[2].trim()
+    
     return data
 
   } // end function 
 
   function x(d) { return d * digit_w/100 }
   function y(d) { return d * digit_h/100 }
+
+  function isDigit(char: string): bool { return ("1234567890".indexOf(char) >= 0) }
+  function isOperator(char: string): bool { return ("*-+/".indexOf(char) >= 0) }
+
 
 } // end module
