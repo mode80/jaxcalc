@@ -23,15 +23,11 @@ module calcsand {
 
   // dimension vars
   var svg_w = 768 , svg_h = 1024 
-  var digit_x_margin = 0, digit_y_margin = svg_h * 0.05 
-  var digit_w = Math.min(svg_w, svg_h) / 2 - Math.max(digit_x_margin,digit_y_margin)
-  var digit_h = digit_w
-  var svg_half_w = svg_w / 2
-  var svg_half_h = svg_h / 2
-  var digit_half_w = digit_w / 2
-  var digit_half_h = digit_h / 2
-  var digit_full_w = digit_w + (2 * digit_x_margin)      
-  var digit_full_h = digit_h + (2 * digit_y_margin)     
+  var digit_w, digit_h 
+  var digit_x_margin , digit_y_margin 
+  var svg_half_w , svg_half_h 
+  var digit_half_w , digit_half_h 
+  var digit_full_w , digit_full_h 
 
   // d3 selection and dimension vars
   var body = d3.select('body')
@@ -43,11 +39,28 @@ module calcsand {
   function main() {
     
     // set up the drawing area
-    recenterDisplay()
+      svg_w = 768 ; svg_h = 1024 
+      recenterDisplay()
+      resizeDigits()
 
     // attach events
-    body.on('keypress', onKeyPress)
+      body.on('keypress', onKeyPress)
 
+  }
+
+  function resizeDigits() {
+    digit_w = svg_w / Math.max(term[1].length+1, term[2].length+1)  
+    digit_h = svg_h / (term[2] ? 2 : 1) 
+    digit_w = Math.min(digit_w, digit_h)
+    digit_h = Math.min(digit_w, digit_h)
+    digit_x_margin = 0
+    digit_y_margin = digit_h * 0.05
+    svg_half_w = svg_w / 2
+    svg_half_h = svg_h / 2
+    digit_half_w = digit_w / 2
+    digit_half_h = digit_h / 2
+    digit_full_w = digit_w + (2 * digit_x_margin)      
+    digit_full_h = digit_h + (2 * digit_y_margin)     
   }
 
   function onKeyPress() {
@@ -101,6 +114,9 @@ module calcsand {
   }
 
   function showTerms() {
+
+    // reset digit sizing 
+      resizeDigits()
     // regenerate line data for term array 
       data = makeRenderingData(term)
     // rerender new data
