@@ -4,10 +4,11 @@ module calcsand {
 
   // expression related vars
   var eval_me = ""
-  var after_operator = false
   var data = []
   var term = [,"",""] 
   var operator = ""
+  var answer = ""
+  var after_operator = false
 
   // valid input 'enum'
   var INPUT = {
@@ -21,9 +22,10 @@ module calcsand {
   }
 
   // dimension vars
-  var svg_w = 768 , svg_h = 1024
-  var digit_w = 100, digit_h = 100 
-  var digit_x_margin = 0, digit_y_margin = 10
+  var svg_w = 768 , svg_h = 1024 
+  var digit_x_margin = 0, digit_y_margin = svg_h * 0.05 
+  var digit_w = Math.min(svg_w, svg_h) / 2 - Math.max(digit_x_margin,digit_y_margin)
+  var digit_h = digit_w
   var svg_half_w = svg_w / 2
   var svg_half_h = svg_h / 2
   var digit_half_w = digit_w / 2
@@ -34,17 +36,19 @@ module calcsand {
   // d3 selection and dimension vars
   var body = d3.select('body')
   var svg = body.append('svg').attr({ width: svg_w, height: svg_h })
-  var display = svg.append('g')
+  var display = svg.append('g').attr({ height: 1, width: 1 })
+
+  main()
 
   function main() {
-
+    
     // set up the drawing area
-    display.attr({ height: 1, width: 1, transform: 'translate('+svg_half_w+','+svg_half_h+')' }) // used for centering
+    recenterDisplay()
 
     // attach events
     body.on('keypress', onKeyPress)
+
   }
-  main()
 
   function isDigit(char: string): bool { return ("1234567890".indexOf(char) >= 0) }
   function isOperator(char: string): bool { return ("*-+/".indexOf(char) >= 0) }
@@ -62,35 +66,45 @@ module calcsand {
   }
 
   function processInput(input: string /** INPUT enum **/) {
-    if (isDigit(input)) {
-      if (!after_operator)
-        showTerm(1, input)
-      else
-        showTerm(2, input)
-    }
-    else if (isOperator(input)) {
-      showOperator(input)
-      after_operator = true
-    }
-    else if (input == INPUT.CLEAR) {
-      term[1] = ""; term[2] = "";
-      operator = "", after_operator = false;
-      eval_me = ""; data = []
+    if (input == INPUT.CLEAR || (isDigit(input) && answer.length) ) {
+      resetToStart()
       showStart()
     }
-    else if (input == INPUT.EQUALS) {
-      var answer = eval(term[1]+operator+term[2]) + ""
-      showAnswer(answer)
+    if (isDigit(input)) {
+      if (answer.length) resetToStart()
+      if (after_operator) {term[2] += input} else { term[1] += input }
+      showTerms()
     }
+    else if (isOperator(input)) {
+      if (answer) {
+        var prev_answer = answer
+        resetToStart()
+        term[1] = prev_answer
+        showTerms()
+      }
+      operator = input
+      after_operator = true
+      showOperator(input)
+    }
+    else if (input == INPUT.EQUALS) {
+      answer = eval(term[1]+operator+term[2]) + ""
+      showAnswer()
+    }
+  }
+
+  function resetToStart() {
+    term[1] = ""; term[2] = ""
+    operator = ""; after_operator = false
+    eval_me = ""; data = []
+    answer = ""; 
   }
 
   function showStart() {
     svg.selectAll('line').remove()
   }
 
-  function showTerm(n:number, input: string) {
-    // regenerate line data for new input
-      term[n] += input
+  function showTerms() {
+    // regenerate line data for term array 
       data = makeRenderingData(term)
     // rerender new data
       renderData(data)
@@ -98,26 +112,32 @@ module calcsand {
   }
 
   function showOperator(input: string) {
-    operator = input
     recenterDisplay()
   }
 
-  function showAnswer(answer: string) {
+  function showAnswer() {
     data = makeRenderingData(["",answer,""]) //TODO fix this ugly cludge
-    renderData(data)
+    recenterDisplay(1000)
+    renderData(data,1000)
   }
 
-  function recenterDisplay() {
-    var x_offset = (svg_half_w - (Math.max(term[1].length, term[2].length + operator.length) * digit_half_w))
+  function recenterDisplay(duration:number=250) {
+    var digits_wide = Math.max(term[1].length, term[2].length)
+    var digits_high = term[2] ? 2 : 1
+    if (answer) { digits_wide = answer.length; digits_high = 1 }
+    var x_offset = ( svg_half_w - ( digits_wide * digit_half_w ) )
+    var y_offset =(svg_half_h - (digit_half_h*digits_high)) 
     display
       .transition()
-      .attr('transform', 'translate(' + x_offset + ',450)')
+      .duration(duration)
+      .attr('transform', 'translate(' + x_offset + ',' + y_offset + ')')
   }
 
-  function renderData(data) {
+  function renderData(data:{}[], duration:number=250) {
     var lines = display.selectAll('line').data(data)
     lines
       .transition()
+      .duration(duration)
       .attr('x1', (d) => { return d.x1 })
       .attr('x2', (d) => { return d.x2 })
       .attr('y1', (d) => { return d.y1 })
