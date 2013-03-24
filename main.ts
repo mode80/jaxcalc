@@ -22,7 +22,7 @@ module calcsand {
   }
 
   // dimension vars
-  var svg_w = 1024 , svg_h = 768 
+  var svg_w = 1000 , svg_h = 750 
   var digit_w, digit_h 
   var digit_x_margin , digit_y_margin 
   var svg_half_w , svg_half_h 
@@ -62,8 +62,8 @@ module calcsand {
   }
 
   function resizeDigits() {
-    digit_w = svg_w / Math.max(term[1].length+1, term[2].length+1)  
-    digit_h = svg_h / (term[2].length ? 2 : 1) 
+    digit_w = svg_w / Math.max(term[1].length+1, term[2].length+1, answer.length+1)  
+    digit_h = svg_h / (answer.length? 1 : term[2].length ? 2 : 1) 
     digit_x_margin = 0
     digit_y_margin = digit_h * 0.15
     digit_w -= digit_x_margin * 2
@@ -154,6 +154,7 @@ module calcsand {
   }
 
   function showAnswer() {
+    resizeDigits()
     data = makeRenderingData(["",answer,""]) // TODO fix this ugly cludge
     recenterDisplay(1000)
     renderData(data,1000)
@@ -179,19 +180,18 @@ module calcsand {
       .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
       //.attr('opacity', 0)
       //.transition()
-      .attr('opacity', 0.9)
+      .attr('opacity', 1)
     lines
       .exit()
       .remove()
   }
 
-  function makeRenderingData(term:string[], reverse:bool=true) {
+  function makeRenderingData(term:string[]) {
       
     var data:any = []
-    var grow: Function
  
-    // decide if we're rendering lines in order or backwards  
-    if (reverse) { data.grow = Array.prototype.unshift } else { data.grow = Array.prototype.push }
+    // make it easy to interchange push and unshift 
+    data.grow = Array.prototype.unshift 
 
     // pad shortest term with spaces to keep same-significant digits in sync
     term[1] = Array(Math.max(term[2].length-term[1].length+1,0)).join(" ") + term[1]
@@ -212,7 +212,7 @@ module calcsand {
           case "", " ":
             break
           case ".":
-            data.grow({ x1: x(100), y1: y(100), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(50), y1: y(100), x2: x(50), y2: y(100), xoff: x_offset, yoff: y_offset })
             break
           case "0":
             data.grow({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
@@ -221,64 +221,64 @@ module calcsand {
             data.grow({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "2":
-            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(93), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(23), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "3":
-            data.grow({ x1: x(20), y1: y(00), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(75), y2: y(44), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(73), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(75), y1: y(56), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "4":
-            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(70), y1: y(00), x2: x(70), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(55), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(80), y2: y(45), xoff: x_offset, yoff: y_offset })
             break
           case "5":
-            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(55), x2: x(80), y2: y(95), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(75), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "6":
-            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(99), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(55), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(94), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset })
             break
           case "7":
-            data.grow({ x1: x(20), y1: y(25), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(00), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(00), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(75), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(75), x2: x(20), y2: y(75), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(75), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(25), x2: x(20), y2: y(05), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(00), x2: x(76), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(06), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(55), x2: x(80), y2: y(70), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(75), y1: y(75), x2: x(25), y2: y(75), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(70), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset })
             break
           case "8":
-            data.grow({ x1: x(50), y1: y(00), x2: x(80), y2: y(30), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(30), x2: x(50), y2: y(60), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(50), y1: y(60), x2: x(20), y2: y(30), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(30), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(60), x2: x(80), y2: y(60), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(60), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(99), x2: x(20), y2: y(60), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(55), y1: y(00), x2: x(75), y2: y(20), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(75), y1: y(30), x2: x(55), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(45), y1: y(50), x2: x(25), y2: y(30), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(20), x2: x(45), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(61), x2: x(75), y2: y(61), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(66), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(94), x2: x(20), y2: y(66), xoff: x_offset, yoff: y_offset })
             break
           case "9":
-            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(50), y1: y(00), x2: x(80), y2: y(25), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(25), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(50), y1: y(50), x2: x(20), y2: y(25), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(20), y1: y(25), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.grow({ x1: x(80), y1: y(50), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(75), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(45), x2: x(80), y2: y(05), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(54), y1: y(05), x2: x(70), y2: y(22), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(70), y1: y(28), x2: x(54), y2: y(45), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(48), y1: y(45), x2: x(31), y2: y(28), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(31), y1: y(22), x2: x(48), y2: y(05), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(55), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
         } // end switch
 
