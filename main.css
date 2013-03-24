@@ -1,7 +1,7 @@
 ﻿
   body {
     margin: 10px;
-    background: gray;	
+    background: steelblue;	
   }
   svg {
     background: white;
@@ -16,7 +16,6 @@
   }
 
   svg line {
-    stroke: black;
-    stroke-width: 10px;
+    stroke: steelblue;
     stroke-linecap:round;
   }

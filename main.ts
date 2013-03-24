@@ -22,24 +22,25 @@ module calcsand {
   }
 
   // dimension vars
-  var svg_w = 768 , svg_h = 1024 
+  var svg_w = 1024 , svg_h = 768 
   var digit_w, digit_h 
   var digit_x_margin , digit_y_margin 
   var svg_half_w , svg_half_h 
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
-
-  // d3 selection and dimension vars
+  var stroke_rule
+    
+  // d3 selection vars
   var body = d3.select('body')
   var svg = body.append('svg').attr({ width: svg_w, height: svg_h })
   var display = svg.append('g').attr({ height: 1, width: 1 })
+  var sheet:any = document.styleSheets[0]
 
   main()
 
   function main() {
     
     // set up the drawing area
-      svg_w = 768 ; svg_h = 1024 
       recenterDisplay()
       resizeDigits()
 
@@ -48,19 +49,43 @@ module calcsand {
 
   }
 
+  function recenterDisplay(duration=250) {
+    var digits_wide = Math.max(term[1].length, term[2].length)
+    var digits_high = term[2].length ? 2 : 1
+    if (answer.length) { digits_wide = answer.length; digits_high = 1 }
+    var x_offset = svg_half_w - ( digits_wide * digit_half_w ) 
+    var y_offset = svg_half_h - (digits_high * digit_half_h) - (digits_high - 1) * digit_y_margin 
+    display
+      .transition()
+      .duration(duration)
+      .attr('transform', 'translate(' + x_offset + ',' + y_offset + ')')
+  }
+
   function resizeDigits() {
     digit_w = svg_w / Math.max(term[1].length+1, term[2].length+1)  
-    digit_h = svg_h / (term[2] ? 2 : 1) 
+    digit_h = svg_h / (term[2].length ? 2 : 1) 
+    digit_x_margin = 0
+    digit_y_margin = digit_h * 0.15
+    digit_w -= digit_x_margin * 2
+    digit_h -= digit_y_margin * 2
     digit_w = Math.min(digit_w, digit_h)
     digit_h = Math.min(digit_w, digit_h)
-    digit_x_margin = 0
-    digit_y_margin = digit_h * 0.05
     svg_half_w = svg_w / 2
     svg_half_h = svg_h / 2
     digit_half_w = digit_w / 2
     digit_half_h = digit_h / 2
-    digit_full_w = digit_w + (2 * digit_x_margin)      
-    digit_full_h = digit_h + (2 * digit_y_margin)     
+    digit_full_w = digit_w + (digit_x_margin*2)      
+    digit_full_h = digit_h + (digit_y_margin*2)     
+    resizeStroke(digit_w * 0.05)
+  }
+
+  function resizeStroke(width: number) { 
+    if (typeof stroke_rule === "undefined") {
+      var rule_num = sheet.insertRule('svg line {}', sheet.rules.length) 
+      stroke_rule = sheet.rules[rule_num]
+    }
+    stroke_rule.cssText = 'svg line { stroke-width : ' + Math.floor(width) + '}'
+    stroke_rule.style.strokeWidth = Math.max(1,Math.floor(width)) + "px"
   }
 
   function onKeyPress() {
@@ -129,21 +154,9 @@ module calcsand {
   }
 
   function showAnswer() {
-    data = makeRenderingData(["",answer,""]) //TODO fix this ugly cludge
+    data = makeRenderingData(["",answer,""]) // TODO fix this ugly cludge
     recenterDisplay(1000)
     renderData(data,1000)
-  }
-
-  function recenterDisplay(duration:number=250) {
-    var digits_wide = Math.max(term[1].length, term[2].length)
-    var digits_high = term[2] ? 2 : 1
-    if (answer) { digits_wide = answer.length; digits_high = 1 }
-    var x_offset = ( svg_half_w - ( digits_wide * digit_half_w ) )
-    var y_offset =(svg_half_h - (digit_half_h*digits_high)) 
-    display
-      .transition()
-      .duration(duration)
-      .attr('transform', 'translate(' + x_offset + ',' + y_offset + ')')
   }
 
   function renderData(data:{}[], duration:number=250) {
@@ -166,15 +179,19 @@ module calcsand {
       .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
       //.attr('opacity', 0)
       //.transition()
-      .attr('opacity', 0.4)
+      .attr('opacity', 0.9)
     lines
       .exit()
       .remove()
   }
 
-  function makeRenderingData(term:string[], operator?:string) {
+  function makeRenderingData(term:string[], reverse:bool=true) {
       
-    var data = []
+    var data:any = []
+    var grow: Function
+ 
+    // decide if we're rendering lines in order or backwards  
+    if (reverse) { data.grow = Array.prototype.unshift } else { data.grow = Array.prototype.push }
 
     // pad shortest term with spaces to keep same-significant digits in sync
     term[1] = Array(Math.max(term[2].length-term[1].length+1,0)).join(" ") + term[1]
@@ -194,71 +211,74 @@ module calcsand {
         switch (digit) {
           case "", " ":
             break
+          case ".":
+            data.grow({ x1: x(100), y1: y(100), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
+            break
           case "0":
-            data.push({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "1":
-            data.push({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "2":
-            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "3":
-            data.push({ x1: x(20), y1: y(00), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "4":
-            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(70), y1: y(00), x2: x(70), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(70), y1: y(00), x2: x(70), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "5":
-            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
           case "6":
-            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(99), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(99), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "7":
-            data.push({ x1: x(20), y1: y(25), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(00), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(00), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(75), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(75), x2: x(20), y2: y(75), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(75), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(25), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(75), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(75), x2: x(20), y2: y(75), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(75), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
             break
           case "8":
-            data.push({ x1: x(50), y1: y(00), x2: x(80), y2: y(30), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(30), x2: x(50), y2: y(60), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(50), y1: y(60), x2: x(20), y2: y(30), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(30), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(60), x2: x(80), y2: y(60), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(60), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(99), x2: x(20), y2: y(60), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(50), y1: y(00), x2: x(80), y2: y(30), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(30), x2: x(50), y2: y(60), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(50), y1: y(60), x2: x(20), y2: y(30), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(30), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(60), x2: x(80), y2: y(60), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(60), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(99), x2: x(20), y2: y(60), xoff: x_offset, yoff: y_offset })
             break
           case "9":
-            data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(50), y1: y(00), x2: x(80), y2: y(25), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(25), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(50), y1: y(50), x2: x(20), y2: y(25), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(20), y1: y(25), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
-            data.push({ x1: x(80), y1: y(50), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(00), x2: x(20), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(00), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(50), x2: x(80), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(80), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(50), y1: y(00), x2: x(80), y2: y(25), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(25), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(50), y1: y(50), x2: x(20), y2: y(25), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(20), y1: y(25), x2: x(50), y2: y(00), xoff: x_offset, yoff: y_offset })
+            data.grow({ x1: x(80), y1: y(50), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset })
             break
         } // end switch
 

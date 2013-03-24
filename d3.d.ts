@@ -731,6 +731,7 @@ module D3 {
             (name: string): string;
             (name: string, value: any, priority?: string): Selection;
             (name: string, valueFunction: (data: any, index: number) => any, priority?: string): Selection;
+            (options: any): Selection;
         };
 
         property: {
