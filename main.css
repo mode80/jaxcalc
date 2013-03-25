@@ -16,6 +16,6 @@
   }
 
   svg line {
-    stroke: steelblue;
-    stroke-linecap:round;
+    stroke: black;
+    stroke-linecap:square;
   }
