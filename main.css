@@ -1,11 +1,23 @@
 ﻿
   body {
-    margin: 9px 12px 9px 12px;
-    background: steelblue;	
+    margin: 35px 0 0 0 ;
+    background:steelblue;	
+    overflow:hidden;
   }
+
+  #frame{
+    margin: 0px auto; /*center*/
+    width: 98%;
+    height: 94%;
+  }
+
   svg {
     background: white;
+    overflow:hidden;
+    width:100%;
+    height:100%;
   }
+
   svg text { 
     font-weight: bolder;
     font-family: sans-serif;
@@ -18,6 +30,6 @@
   .display {
     shape-rendering: crispEdges;
     stroke: steelblue;
-    stroke-linecap:square;
+    stroke-linecap:round;
     fill:none;
   }

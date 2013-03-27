@@ -26,31 +26,30 @@ module calcsand {
   }
 
   // dimension vars
-  var svg_w = 1000 , svg_h = 750 
   var digit_w, digit_h 
   var digit_x_margin , digit_y_margin 
   var svg_half_w , svg_half_h 
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
   var stroke_rule
+  var svg_w=10000, svg_h=7500
     
   // d3 selection vars
   var body = d3.select('body')
-  var svg = body.append('svg').attr({ width: svg_w, height: svg_h })
-  var display = svg.append('g').attr({ 'class': 'display', height: 1, width: 1 })
+  var svg = body.select('svg').attr({viewBox: "0 0 " + svg_w + " " + svg_h })
+  var display = svg.append('g').attr({ 'class': 'display', height: '1', width: '1' })
   var sheet:any = document.styleSheets[0]
 
   main()
 
   function main() {
     
-    // set up the drawing area
+    // setup drawing space
       recenterDisplay()
       resizeDigits()
 
     // attach events
       body.on('keypress', onKeyPress)
-
   }
 
   function recenterDisplay(duration=0) {
@@ -66,7 +65,7 @@ module calcsand {
   }
 
   function resizeDigits() {
-    digit_w = svg_w / Math.max(term1.length+1, term2.length+1, answer.length+1)  
+    digit_w = svg_w / ((answer.length || Math.max(term1.length, term2.length))+1)
     digit_h = svg_h / (answer.length? 1 : term2.length ? 2 : 1) 
     digit_x_margin = 0
     digit_y_margin = digit_h * 0.15
@@ -253,7 +252,7 @@ module calcsand {
     while (digit_i--) { // loop through each digit, starting with least significant 
       digit_inc++
       var part_i = parts.length 
-      var opacity = 1 //Math.max(digit_inc / max_digits , 0.1)
+      var opacity = digit_inc/max_digits / ((digit_inc>1)?10:1)
       while (part_i--) { // loop (backwards) through each term
         var digit = parts[part_i].substr(digit_i,1)
         var x_offset = Math.round( (digit_full_w * digit_i ) )
@@ -267,7 +266,7 @@ module calcsand {
               ellipses.unshift({ cx: x(50), cy: y(99), rx: x(1), ry: y(1), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "0":
-              ellipses.unshift({ cx: x(50), cy: y(50), rx: x(40), ry: y(40), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              ellipses.unshift({ cx: x(50), cy: y(50), rx: x(30), ry: y(30), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "1":
               lines.unshift({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })

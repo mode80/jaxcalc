@@ -808,6 +808,7 @@ module D3 {
             (name: string): string;
             (name: string, value: any): Transition;
             (name: string, valueFunction: (data: any, index: number) => any): Transition;
+            (options: any): Transition;
         };
         call(callback: (selection: Selection) => void ): Transition;
 
