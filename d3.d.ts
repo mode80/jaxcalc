@@ -4,7 +4,7 @@
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
 module D3 {
-    interface Selectors {
+    interface Selectors extends Array {
         /**
         * Select an element from the current document
         */
