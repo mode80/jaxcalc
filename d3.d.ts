@@ -200,7 +200,7 @@ module D3 {
         /**
         * Access the current user event for interaction
         */
-        event: Event;
+        event: any; //Event;
         
         /**
         * Compare two values for sorting.
@@ -605,6 +605,9 @@ module D3 {
         * @param specifier The format specifier to use
         */
         format(specifier: string): (value: number) => string;
+
+        /* Returns array of x and y coordinates for each touch associated with the current d3.event */
+        touches(container: any): Array[];
     }
 
     interface Xhr {
@@ -779,6 +782,10 @@ module D3 {
         };
 
         transition: () => Transition;
+        
+        /* Returns the first non-null element in the current selection. */
+        node: () => Node;
+
     }
 
     interface EnterSelection {
@@ -814,6 +821,8 @@ module D3 {
 
         select: (selector: string) => Transition;
         selectAll: (selector: string) => Transition;
+      
+        ease: (easetype: string) => Transition;
     }
 
     interface Nest {
@@ -1045,7 +1054,9 @@ module D3 {
         * Create a new area generator
         */
         area(): Area;
+     
     }
+
 
     interface Axis {
         (selection: Selection): void;

@@ -1,28 +1,19 @@
 ﻿/// <reference path="d3.d.ts" />
 
-module calcsand {
-
-  // expression related vars
-  var eval_me = ""
+module calcsand {  // expression related vars
   var term1 = "", term2 = ""
   var operator = ""
   var answer = ""
   var after_operator = false
 
   // rendering related vars
-  var lines:Object[] = []
-  var ellipses:Object[] = []
+  var line_data:Object[] = []
+  var ellipse_data:Object[] = []
 
   // valid input "enum"
   var INPUT = {
     0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
-    DECIMAL: '.',
-    ADD: '+',
-    SUBTRACT: '-',
-    MULTIPLY: '*',
-    DIVIDE: '/',
-    EQUALS: '=',
-    CLEAR: 'c',
+    DECIMAL: '.', ADD: '+', SUBTRACT: '-', MULTIPLY: '*', DIVIDE: '/', EQUALS: '=', CLEAR: 'c',
   }
 
   // dimension vars
@@ -31,54 +22,75 @@ module calcsand {
   var svg_half_w , svg_half_h 
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
-  var stroke_rule
-  var svg_w=10000, svg_h=7500
+  var stroke_rule 
+  var svg_w=768, svg_h=1024
     
   // d3 selection vars
-  var body = d3.select('body')
-  var svg = body.select('svg').attr({viewBox: "0 0 " + svg_w + " " + svg_h })
-  var display = svg.append('g').attr({ 'class': 'display', height: '1', width: '1' })
-  var sheet:any = document.styleSheets[0]
+  var body = d3.select('body') 
+  var svg = body.select('svg').attr({
+    viewBox: "0 0 " + svg_w + " " + svg_h,
+    preserveAspectRatio: 'none'
+  }) 
+  var display = svg.append('g').attr({ 'class': 'display', height: '1', width: '1' }) 
+  var txt = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.1})
+  var debug = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.9})
+  var touch_lines : D3.UpdateSelection
 
-  main()
+  // other module level vars
+  var lastTouchEndTime = 0 
+  
+
+  main() // lets do this
 
   function main() {
     
     // setup drawing space
-      recenterDisplay()
-      resizeDigits()
+      recenterDisplay() 
+      resizeDigits() 
+      makeBorder()
 
     // attach events
-      body.on('keypress', onKeyPress)
+      body.on('keypress', onKeyPress) 
+      body.on('touchstart', onTouchStart) 
+         .on('touchmove', onTouchMove)   
+         .on('touchend', onTouchEnd) 
   }
 
   function recenterDisplay(duration=0) {
-    var digits_wide = Math.max(term1.length, term2.length)
-    var digits_high = term2.length ? 2 : 1
-    if (answer.length) { digits_wide = answer.length; digits_high = 1 }
-    var x_offset = Math.round( svg_half_w - ( digits_wide * digit_half_w ) )
-    var y_offset = Math.round( svg_half_h - (digits_high * digit_half_h) - (digits_high - 1) * digit_y_margin )
+    var digits_wide = Math.max(term1.length, term2.length) ;
+    var digits_high = term2.length ? 2 : 1 ;
+    if (answer.length) { digits_wide = answer.length; digits_high = 1 } ;
+    var x_offset = Math.round( svg_half_w - ( digits_wide * digit_half_w ) ) ;
+    var y_offset = Math.round( svg_half_h - (digits_high * digit_half_h) - (digits_high - 1) * digit_y_margin ) 
     display
       .transition()
       .duration(duration)
-      .attr('transform', 'translate(' + x_offset + ',' + y_offset + ')')
+      .attr('transform', 'translate(' + x_offset + ',' + y_offset + ')') 
   }
 
   function resizeDigits() {
-    digit_w = svg_w / ((answer.length || Math.max(term1.length, term2.length))+1)
+    digit_w = svg_w / ((answer.length || Math.max(term1.length, term2.length))+1) 
     digit_h = svg_h / (answer.length? 1 : term2.length ? 2 : 1) 
-    digit_x_margin = 0
-    digit_y_margin = digit_h * 0.15
-    digit_w -= digit_x_margin * 2
-    digit_h -= digit_y_margin * 2
-    digit_w = Math.min(digit_w, digit_h)
-    digit_h = Math.min(digit_w, digit_h)
-    svg_half_w = svg_w / 2
-    svg_half_h = svg_h / 2
-    digit_half_w = digit_w / 2
-    digit_half_h = digit_h / 2
-    digit_full_w = digit_w + (digit_x_margin*2)      
+    digit_x_margin = 0 
+    digit_y_margin = digit_h * 0.15 
+    digit_w -= digit_x_margin * 2 
+    digit_h -= digit_y_margin * 2 
+    digit_w = Math.min(digit_w, digit_h) 
+    digit_h = Math.min(digit_w, digit_h) 
+    svg_half_w = svg_w / 2 
+    svg_half_h = svg_h / 2 
+    digit_half_w = digit_w / 2 
+    digit_half_h = digit_h / 2 
+    digit_full_w = digit_w + (digit_x_margin*2) 
     digit_full_h = digit_h + (digit_y_margin*2)     
+  }
+
+  function makeBorder() {
+    var border_size = svg_h*0.02
+    svg.append('rect').attr({ 'class': 'border', x: 0, y: 0, width: svg_w, height: border_size })
+    svg.append('rect').attr({ 'class': 'border', x: 0, y: svg_h-border_size, width: svg_w, height: border_size})
+    svg.append('rect').attr({ 'class': 'border', x: 0, y: 0, width: border_size, height: svg_h })
+    svg.append('rect').attr({ 'class': 'border', x: svg_w - border_size, y: 0, width: border_size, height: svg_h })
   }
 
   function onKeyPress() {
@@ -93,12 +105,68 @@ module calcsand {
     processInput(input)
   }
 
-  function processInput(input: string /** INPUT enum **/) {
-    if (input == INPUT.CLEAR || (isDigit(input) && answer.length) ) {
+  function onTouchStart() {
+
+    touch_lines = selectionForTouches()
+
+    touch_lines.enter()
+        .append("line")
+        .attr("class", "touch")
+        .attr("x1", function (d) { return d[0] })
+        .attr("y1", function (d) { return d[1] })
+        .attr("x2", function (d) { return d[0] })
+        .attr("y2", function (d) { return d[1] })
+        .style("fill", "none")
+        .style("stroke", "steelblue")
+        .style("stroke-linecap", "round")
+        .style("stroke-width", Math.max(svg_h,svg_w)/10)
+        .transition().ease('elastic')
+          .duration(500)
+          .attr("x1", function (d) { return d[0] })
+          .attr("y1", function (d) { return d[1]/*-digit_half_w*/ })
+          .attr("x2", function (d) { return d[0] })
+          .attr("y2", function (d) { return d[1]/*+digit_half_w*/ })
+  }
+
+  function onTouchMove() {
+
+    touch_lines = selectionForTouches()
+    
+    touch_lines
+        .attr("x1", function (d) { return d[0] })
+        .attr("y1", function (d) { return d[1]/*-digit_half_w*/ })
+        .attr("x2", function (d) { return d[0] })
+        .attr("y2", function (d) { return d[1]/*+digit_half_w*/ })
+
+  }
+
+  function onTouchEnd() {
+
+    touch_lines = selectionForTouches()
+   
+    var simul_timeframe = 1000 // touchends occuring within this many milliseconds are considered to be "simultaneous"
+    var is_simultaneous = (Date.now() - lastTouchEndTime < simul_timeframe)
+
+    // the line remnants with now-gone touch coordinates should be added to the line data
+    touch_lines.exit().remove()
+
+    lastTouchEndTime = Date.now()
+  }
+   
+  function selectionForTouches():D3.UpdateSelection {
+    ; d3.event.preventDefault()
+    var touch_array = d3.touches( svg.node() )
+    debug.text(touch_array)
+    return svg.selectAll("line.touch").data(touch_array)
+  }
+
+  export function processInput(input: string /** INPUT enum **/) {
+    if (input == INPUT.CLEAR ||
+      (isDigit(input) && answer.length)) { // autoclear on first digit after former answer
       resetToStart()
       showStart()
     }
-    if (isDigit(input)) {
+    if (isDigit(input)) { // normal additional digit
       if (answer.length) resetToStart()
       if (after_operator) {term2 += input} else { term1 += input }
       showTerms()
@@ -134,25 +202,27 @@ module calcsand {
   }
 
   function findAnswer() {
-      try {
-        answer = eval(term1 + operator + term2) + ""
-      } catch (e) {
-        answer = "" 
-      }
+    try {
+      answer = eval(term1 + operator + term2) + ""
+    } catch (e) {
+      answer = "" 
+    }
   }
   
   function resetToStart() {
     term1 = ""; term2 = ""
     operator = ""; after_operator = false
-    eval_me = "";
-    lines = []; ellipses = []
-    answer = ""; 
+    line_data = []; ellipse_data = []
+    answer = "";
+    txt.text("")
   }
 
   function showStart() {
     svg.selectAll('line').remove()
     svg.selectAll('ellipse').remove()
+    txt.text("")
   }
+
 
   function showTerms() {
 
@@ -163,6 +233,8 @@ module calcsand {
     // rerender new data
       renderData()
       recenterDisplay()
+    // update text display
+      txt.text(term1 + "" + operator + "" + term2)
   }
 
   function showOperator(input: string) {
@@ -174,11 +246,12 @@ module calcsand {
     makeRenderingData(answer) 
     recenterDisplay(1000)
     renderData(1000)
+    txt.text(answer)
   }
 
   function renderData(duration=0) {
-    var svg_lines = display.selectAll('line').data(lines)
-    svg_lines 
+    var lines = display.selectAll('line').data(line_data)
+    lines 
       .transition()
       .duration(duration)
       .attr('x1', (d) => { return d.x1 })
@@ -188,7 +261,7 @@ module calcsand {
       .attr('opacity', (d) => { return d.o })
       .attr('stroke-width', (d) => { return d.w })
       .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
-    svg_lines 
+    lines 
       .enter()
       .append('line')
       .attr('x1', (d) => { return d.x1 })
@@ -198,11 +271,11 @@ module calcsand {
       .attr('opacity', (d) => { return d.o })
       .attr('stroke-width', (d) => { return d.w })
       .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
-    svg_lines 
+    lines 
       .exit()
       .remove()
-    var svg_ellipses = display.selectAll('ellipse').data(ellipses)
-    svg_ellipses 
+    var ellipses = display.selectAll('ellipse').data(ellipse_data)
+    ellipses 
       .transition()
       .duration(duration)
       .attr('cx', (d) => { return d.cx })
@@ -212,7 +285,7 @@ module calcsand {
       .attr('opacity', (d) => { return d.o })
       .attr('stroke-width', (d) => { return d.w })
       .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
-    svg_ellipses 
+    ellipses 
       .enter()
       .append('ellipse')
       .attr('cx', (d) => { return d.cx })
@@ -222,7 +295,7 @@ module calcsand {
       .attr('opacity', (d) => { return d.o })
       .attr('stroke-width', (d) => { return d.w })
       .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ')' })
-    svg_ellipses 
+    ellipses 
       .exit()
       .remove()
    }
@@ -231,8 +304,8 @@ module calcsand {
     // takes expression parts (e.g. term1, term2, answer) and builds arrays of svg data for later rendering 
 
     // reset globals 
-    lines = []
-    ellipses = []
+    line_data = []
+    ellipse_data = []
     
     // pad shortest term with spaces to keep same-significant digits in sync
     part1 = Array(Math.max(part2.length - part1.length + 1, 0)).join(" ") + (part1 + "")
@@ -252,7 +325,7 @@ module calcsand {
     while (digit_i--) { // loop through each digit, starting with least significant 
       digit_inc++
       var part_i = parts.length 
-      var opacity = digit_inc/max_digits / ((digit_inc>1)?10:1)
+      var opacity = 1 //digit_inc/max_digits / ((digit_inc>1)?10:1)
       while (part_i--) { // loop (backwards) through each term
         var digit = parts[part_i].substr(digit_i,1)
         var x_offset = Math.round( (digit_full_w * digit_i ) )
@@ -263,73 +336,73 @@ module calcsand {
             case "", " ":
               break
             case ".":
-              ellipses.unshift({ cx: x(50), cy: y(99), rx: x(1), ry: y(1), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              ellipse_data.unshift({ cx: x(50), cy: y(99), rx: x(.5), ry: y(.5), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "0":
-              ellipses.unshift({ cx: x(50), cy: y(50), rx: x(30), ry: y(30), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              ellipse_data.unshift({ cx: x(50), cy: y(50), rx: x(.5), ry: y(.5), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "1":
-              lines.unshift({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "2":
-              lines.unshift({ x1: x(80), y1: y(00), x2: x(20), y2: y(93), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(23), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(00), x2: x(20), y2: y(93), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(23), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "3":
-              lines.unshift({ x1: x(20), y1: y(00), x2: x(75), y2: y(44), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(73), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(75), y1: y(56), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(00), x2: x(75), y2: y(44), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(73), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(75), y1: y(56), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "4":
-              lines.unshift({ x1: x(20), y1: y(00), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(00), x2: x(80), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(00), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(00), x2: x(80), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "5":
-              lines.unshift({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(95), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(75), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(95), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(75), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "6":
-              lines.unshift({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(20), y1: y(94), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(94), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "7":
-              lines.unshift({ x1: x(20), y1: y(25), x2: x(20), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(00), x2: x(76), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(06), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(70), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(75), y1: y(75), x2: x(25), y2: y(75), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(20), y1: y(70), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(25), x2: x(20), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(00), x2: x(76), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(06), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(70), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(75), y1: y(75), x2: x(25), y2: y(75), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(70), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "8":
-              lines.unshift({ x1: x(75), y1: y(30), x2: x(55), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(55), y1: y(00), x2: x(75), y2: y(20), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(45), y1: y(50), x2: x(25), y2: y(30), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(20), x2: x(45), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(61), x2: x(75), y2: y(61), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(66), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(20), y1: y(94), x2: x(20), y2: y(66), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(75), y1: y(30), x2: x(55), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(55), y1: y(00), x2: x(75), y2: y(20), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(45), y1: y(50), x2: x(25), y2: y(30), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(20), x2: x(45), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(61), x2: x(75), y2: y(61), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(66), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(94), x2: x(20), y2: y(66), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
             case "9":
-              lines.unshift({ x1: x(75), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(45), x2: x(80), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(54), y1: y(05), x2: x(70), y2: y(22), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(70), y1: y(28), x2: x(54), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(48), y1: y(45), x2: x(31), y2: y(28), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(31), y1: y(22), x2: x(48), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
-              lines.unshift({ x1: x(80), y1: y(55), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(75), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(45), x2: x(80), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(54), y1: y(05), x2: x(70), y2: y(22), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(70), y1: y(28), x2: x(54), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(48), y1: y(45), x2: x(31), y2: y(28), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(31), y1: y(22), x2: x(48), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
+              line_data.unshift({ x1: x(80), y1: y(55), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: width })
               break
           } // end switch
 
