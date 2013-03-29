@@ -23,15 +23,15 @@ module calcsand {  // expression related vars
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
   var stroke_rule 
-  var svg_w=768, svg_h=1024
-    
+  var svg_w = 768, svg_h = 1024
+  var display_x, display_y
+
   // d3 selection vars
   var body = d3.select('body') 
   var svg = body.select('svg').attr({
     viewBox: "0 0 " + svg_w + " " + svg_h,
     preserveAspectRatio: 'none'
   }) 
-  var display = svg.append('g').attr({ 'class': 'display', height: '1', width: '1' }) 
   var txt = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.1})
   var debug = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.9})
   var touch_lines : D3.UpdateSelection
@@ -45,7 +45,6 @@ module calcsand {  // expression related vars
   function main() {
     
     // setup drawing space
-      recenterDisplay() 
       resizeDigits() 
       makeBorder()
 
@@ -54,18 +53,6 @@ module calcsand {  // expression related vars
       body.on('touchstart', onTouchStart) 
          .on('touchmove', onTouchMove)   
          .on('touchend', onTouchEnd) 
-  }
-
-  function recenterDisplay(duration=0) {
-    var digits_wide = Math.max(term1.length, term2.length) ;
-    var digits_high = term2.length ? 2 : 1 ;
-    if (answer.length) { digits_wide = answer.length; digits_high = 1 } ;
-    var x_offset = Math.round( svg_half_w - ( digits_wide * digit_half_w ) ) ;
-    var y_offset = Math.round( svg_half_h - (digits_high * digit_half_h) - (digits_high - 1) * digit_y_margin ) 
-    display
-      .transition()
-      .duration(duration)
-      .attr('transform', 'translate(' + x_offset + ',' + y_offset + ')') 
   }
 
   function resizeDigits() {
@@ -83,6 +70,15 @@ module calcsand {  // expression related vars
     digit_half_h = digit_h / 2 
     digit_full_w = digit_w + (digit_x_margin*2) 
     digit_full_h = digit_h + (digit_y_margin*2)     
+    recenterDisplay()
+  }
+  
+  function recenterDisplay() {
+    var digits_wide = Math.max(term1.length, term2.length) ;
+    var digits_high = term2.length ? 2 : 1 ;
+    if (answer.length) { digits_wide = answer.length; digits_high = 1 } ;
+    display_x = Math.round( svg_half_w - (digits_wide * digit_half_w) ) ;
+    display_y = Math.round( svg_half_h - (digits_high * digit_half_h) - (digits_high - 1) * digit_y_margin ) 
   }
 
   function makeBorder() {
@@ -119,9 +115,9 @@ module calcsand {  // expression related vars
         .style("fill", "none")
         .style("stroke", "steelblue")
         .style("stroke-linecap", "round")
-        .style("stroke-width", Math.max(svg_h,svg_w)/10)
         .transition().ease('elastic')
           .duration(500)
+          .attr("stroke-width", Math.max(svg_h,svg_w)/10)
           .attr("x1", function (d) { return d[0] })
           .attr("y1", function (d) { return d[1]/*-digit_half_w*/ })
           .attr("x2", function (d) { return d[0] })
@@ -144,12 +140,11 @@ module calcsand {  // expression related vars
 
     touch_lines = selectionForTouches()
    
-    var simul_timeframe = 1000 // touchends occuring within this many milliseconds are considered to be "simultaneous"
+    var simul_timeframe = 500 // touchends occuring within this many milliseconds are considered to be "simultaneous"
     var is_simultaneous = (Date.now() - lastTouchEndTime < simul_timeframe)
     var still_touching_count = d3.touches( svg.node() ).length
+    var exit_lines = touch_lines.exit() // the lines no longer being touched 
 
-    // the line no longer being touched 
-    var exit_lines = touch_lines.exit()
     if (still_touching_count > 0) { // it was just a transient on/off touch 
       exit_lines.remove()
     } else { // this concludes the gesture so make the remnant lines part of the number display
@@ -165,7 +160,7 @@ module calcsand {  // expression related vars
     ; d3.event.preventDefault()
     var touch_array = d3.touches( svg.node() )
     debug.text(touch_array)
-    return display.selectAll("line.touch").data(touch_array)
+    return svg.selectAll("line.touch").data(touch_array)
   }
 
   export function processInput(input: string /** INPUT enum **/) {
@@ -240,24 +235,21 @@ module calcsand {  // expression related vars
       makeRenderingData(term1, term2)
     // rerender new data
       renderData()
-      recenterDisplay()
     // update text display
       txt.text(term1 + "" + operator + "" + term2)
   }
 
   function showOperator(input: string) {
-    recenterDisplay()
   }
 
   function showAnswer() {
     resizeDigits()
     makeRenderingData(answer) 
-    recenterDisplay(1000)
     renderData(1000)
     txt.text(answer)
   }
 
-  function renderData(duration=0) {
+  function renderData(duration=500) {
     var lines = svg.selectAll('line').data(line_data)
     lines 
       .transition()
@@ -282,7 +274,7 @@ module calcsand {  // expression related vars
     lines 
       .exit()
       .remove()
-    var ellipses = display.selectAll('ellipse').data(ellipse_data)
+    var ellipses = svg.selectAll('ellipse').data(ellipse_data)
     ellipses 
       .transition()
       .duration(duration)
@@ -326,7 +318,7 @@ module calcsand {  // expression related vars
     var digit_inc = 0  // this will count up
     var max_digits = Math.max(part1.length,part2.length)
     var digit_i = max_digits // this will count down
-    var multiplier = 1 // this goes up to 10 after 1st digit
+    var multiplier = 1 // this could go up to 10 after 1st digit for more intuitive line group animation
     var line_w = Math.round(digit_w * 0.05) 
     
     // take each digit from each part in turn
@@ -336,8 +328,8 @@ module calcsand {  // expression related vars
       var opacity = 1 //digit_inc/max_digits / ((digit_inc>1)?10:1)
       while (part_i--) { // loop (backwards) through each term
         var digit = parts[part_i].substr(digit_i,1)
-        var x_offset = Math.round( (digit_full_w * digit_i ) )
-        var y_offset = Math.round( (digit_full_h * part_i  ) )
+        var x_offset = display_x + Math.round( (digit_full_w * digit_i ) )
+        var y_offset = display_y + Math.round( (digit_full_h * part_i  ) )
         var mult_i = multiplier
         while (mult_i--) {
           switch (digit) {
@@ -418,7 +410,7 @@ module calcsand {  // expression related vars
 
       } // end part_i loop
 
-      multiplier = 10
+      // multiplier = 10
 
     } // end digit_i loop 
 

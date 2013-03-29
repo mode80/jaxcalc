@@ -4,7 +4,7 @@
 // Definitions: https://github.com/borisyankov/DefinitelyTyped
 
 module D3 {
-    interface Selectors extends Array {
+    interface Selectors {
         /**
         * Select an element from the current document
         */
@@ -786,6 +786,8 @@ module D3 {
         /* Returns the first non-null element in the current selection. */
         node: () => Node;
 
+        /* length -- by nature of being an array */
+        length: number;
     }
 
     interface EnterSelection {
