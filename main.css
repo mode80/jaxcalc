@@ -18,6 +18,12 @@
     height:100%;
   }
 
+  svg line {
+    shape-rendering: crispEdges;
+    stroke: steelblue;
+    stroke-linecap:round;
+    fill:none;
+  }
   .border {
     fill: steelblue;
   }
@@ -31,9 +37,3 @@
     opacity: 0.1;
   }
 
-  .display {
-    shape-rendering: crispEdges;
-    stroke: steelblue;
-    stroke-linecap:round;
-    fill:none;
-  }

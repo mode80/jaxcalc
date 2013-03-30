@@ -4,7 +4,7 @@ module calcsand {  // expression related vars
   var term1 = "", term2 = ""
   var operator = ""
   var answer = ""
-  var after_operator = false
+  var after_separate = false
 
   // rendering related vars
   var line_data:Object[] = []
@@ -14,6 +14,7 @@ module calcsand {  // expression related vars
   var INPUT = {
     0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
     DECIMAL: '.', ADD: '+', SUBTRACT: '-', MULTIPLY: '*', DIVIDE: '/', EQUALS: '=', CLEAR: 'c',
+    SEPARATE: '|',
   }
 
   // dimension vars
@@ -113,11 +114,9 @@ module calcsand {  // expression related vars
         .attr("x2", function (d) { return d[0] })
         .attr("y2", function (d) { return d[1] })
         .style("fill", "none")
-        .style("stroke", "steelblue")
-        .style("stroke-linecap", "round")
         .transition().ease('elastic')
-          .duration(500)
           .attr("stroke-width", Math.max(svg_h,svg_w)/10)
+          .attr("opacity", 0.2)
           .attr("x1", function (d) { return d[0] })
           .attr("y1", function (d) { return d[1]/*-digit_half_w*/ })
           .attr("x2", function (d) { return d[0] })
@@ -137,22 +136,21 @@ module calcsand {  // expression related vars
   }
 
   function onTouchEnd() {
-
     touch_lines = selectionForTouches()
    
-    var simul_timeframe = 500 // touchends occuring within this many milliseconds are considered to be "simultaneous"
-    var is_simultaneous = (Date.now() - lastTouchEndTime < simul_timeframe)
     var still_touching_count = d3.touches( svg.node() ).length
     var exit_lines = touch_lines.exit() // the lines no longer being touched 
 
-    if (still_touching_count > 0) { // it was just a transient on/off touch 
-      exit_lines.remove()
-    } else { // this concludes the gesture so make the remnant lines part of the number display
-      var valid_touch_count = exit_lines[0].length
+    if (still_touching_count == 0) { // all have been released
+      var released_count = exit_lines[0].length
       exit_lines.classed('touch', null)
-      processInput(valid_touch_count)
+      if (released_count == 10) { // 10 fingers are special
+        processInput('1'); processInput('0')
+      } else { // use the released finger count as digit input
+        processInput(released_count + '')
+      }
     }
-
+ 
     lastTouchEndTime = Date.now()
   }
    
@@ -164,6 +162,8 @@ module calcsand {  // expression related vars
   }
 
   export function processInput(input: string /** INPUT enum **/) {
+    // an expression is complete upon a term1, separator, term2 and operator -- in that order
+
     if (input == INPUT.CLEAR ||
       (isDigit(input) && answer.length)) { // autoclear on first digit after former answer
       resetToStart()
@@ -171,36 +171,41 @@ module calcsand {  // expression related vars
     }
     if (isDigit(input)) { // normal additional digit
       if (answer.length) resetToStart()
-      if (after_operator) {term2 += input} else { term1 += input }
+      if (after_separate) {term2 += input} else { term1 += input }
       showTerms()
     }
-    else if (isOperator(input)) {
+    if (input == INPUT.SEPARATE) {
+      term2 = "0"
+    }
+    if (isOperator(input)) {
+      findAnswer()
+      showAnswer()
+    }
+
+return
+    if (isOperator(input)) {
       if (answer) { // there exists a previous answer we're operating on
         var prev_answer = answer
         resetToStart()
         term1 = prev_answer
         showTerms()
         operator = input
-        after_operator = true
+        after_separate = true
       }
-      else if (after_operator && term2.length) { // they have everything to hit equals but hit operator instead
+      else if (after_separate && term2.length) { // they have everything to hit equals but hit operator instead
         findAnswer()
         showAnswer()
         term1 = answer
         term2 = "" 
         answer = ""
         operator = input
-        after_operator = true
+        after_separate = true
         showTerms()
       } else {
         operator = input
-        after_operator = true
+        after_separate = true
       }
      showOperator(input)
-    }
-    else if (input == INPUT.EQUALS) {
-      findAnswer()
-      showAnswer()
     }
   }
 
@@ -214,7 +219,7 @@ module calcsand {  // expression related vars
   
   function resetToStart() {
     term1 = ""; term2 = ""
-    operator = ""; after_operator = false
+    operator = ""; after_separate = false
     line_data = []; ellipse_data = []
     answer = "";
     txt.text("")
@@ -336,10 +341,10 @@ module calcsand {  // expression related vars
             case "", " ":
               break
             case ".":
-              ellipse_data.unshift({ cx: x(50), cy: y(99), rx: x(.5), ry: y(.5), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w })
+              ellipse_data.unshift({ cx: x(50), cy: y(99), rx: x(1), ry: y(1), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w })
               break
             case "0":
-              ellipse_data.unshift({ cx: x(50), cy: y(50), rx: x(.5), ry: y(.5), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w })
+              ellipse_data.unshift({ cx: x(50), cy: y(50), rx: x(1), ry: y(1), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w })
               break
             case "1":
               line_data.unshift({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w })
