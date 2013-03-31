@@ -4,7 +4,8 @@ module calcsand {  // expression related vars
   var term1 = "", term2 = ""
   var operator = ""
   var answer = ""
-  var after_separate = false
+  var separator = "" 
+  var equals = "" 
 
   // rendering related vars
   var line_data:Object[] = []
@@ -33,7 +34,7 @@ module calcsand {  // expression related vars
     viewBox: "0 0 " + svg_w + " " + svg_h,
     preserveAspectRatio: 'none'
   }) 
-  var txt = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.1})
+  var txt = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.055})
   var debug = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.9})
   var touch_lines : D3.UpdateSelection
 
@@ -99,6 +100,7 @@ module calcsand {  // expression related vars
     if (isOperator(char)) input = char
     if (char_code == 13 || char == '=') input = INPUT.EQUALS
     if (char == 'c') input = INPUT.CLEAR
+    if (char == '|') input = INPUT.SEPARATE
     processInput(input)
   }
 
@@ -162,51 +164,52 @@ module calcsand {  // expression related vars
   }
 
   export function processInput(input: string /** INPUT enum **/) {
-    // an expression is complete upon a term1, separator, term2 and operator -- in that order
+    // an expression is complete upon a term1, separator, term2 and operator 
 
-    if (input == INPUT.CLEAR ||
-      (isDigit(input) && answer.length)) { // autoclear on first digit after former answer
+    // CLEAR
+    if (input == INPUT.CLEAR ) { 
       resetToStart()
-      showStart()
     }
-    if (isDigit(input)) { // normal additional digit
-      if (answer.length) resetToStart()
-      if (after_separate) {term2 += input} else { term1 += input }
-      showTerms()
+    // DIGIT
+    if (isDigit(input)) { 
+      if (answer.length) resetToStart() // autoclear on first digit after former answer
+      if (separator.length) { term2 += input } else { term1 += input }
     }
+    // SEPARATOR
     if (input == INPUT.SEPARATE) {
-      term2 = "0"
+      separator = INPUT.SEPARATE
     }
+    // OPERATOR
     if (isOperator(input)) {
+      if (answer.length) { 
+        // in the case where previous answer is in play, use that as term1 of a fresh expression
+        var temp = answer
+        resetToStart()
+        term1 = temp 
+      }
+      if (term1.length && term2.length && operator.length && answer.length == 0) { 
+        // in the case where all is collected without an answer, find one first 
+        findAnswer()
+        processInput(input)
+      }
+      if (term1.length) { 
+        // as long as we have a term1, do the normal thing
+        separator = INPUT.SEPARATE
+        if (term2.length) equals = INPUT.EQUALS
+        operator = input
+      }
+    }
+    // EQUALS
+    if (input == INPUT.EQUALS) {
+      equals = INPUT.EQUALS
+    }
+    // ANSWER (is ready to be found)
+    if (term1.length && operator.length && term2.length && equals.length) {
       findAnswer()
-      showAnswer()
     }
 
-return
-    if (isOperator(input)) {
-      if (answer) { // there exists a previous answer we're operating on
-        var prev_answer = answer
-        resetToStart()
-        term1 = prev_answer
-        showTerms()
-        operator = input
-        after_separate = true
-      }
-      else if (after_separate && term2.length) { // they have everything to hit equals but hit operator instead
-        findAnswer()
-        showAnswer()
-        term1 = answer
-        term2 = "" 
-        answer = ""
-        operator = input
-        after_separate = true
-        showTerms()
-      } else {
-        operator = input
-        after_separate = true
-      }
-     showOperator(input)
-    }
+    showExpression()
+
   }
 
   function findAnswer() {
@@ -219,42 +222,36 @@ return
   
   function resetToStart() {
     term1 = ""; term2 = ""
-    operator = ""; after_separate = false
+    operator = ""; separator = "" 
+    equals = "";  answer = "";
     line_data = []; ellipse_data = []
-    answer = "";
-    txt.text("")
   }
 
-  function showStart() {
-    svg.selectAll('line').remove()
-    svg.selectAll('ellipse').remove()
-    txt.text("")
-  }
-
-
-  function showTerms() {
-
-    // reset digit sizing 
-      resizeDigits()
-    // regenerate line data for term array 
-      makeRenderingData(term1, term2)
-    // rerender new data
-      renderData()
-    // update text display
-      txt.text(term1 + "" + operator + "" + term2)
-  }
-
-  function showOperator(input: string) {
-  }
-
-  function showAnswer() {
+  function showExpression() {
+    var duration = 0 
     resizeDigits()
-    makeRenderingData(answer) 
-    renderData(1000)
-    txt.text(answer)
+    if (answer.length) {
+      makeRenderingData(answer)
+      duration = 500
+    } else {
+      makeRenderingData(term1, term2)
+      duration = 0
+    }
+    renderData(duration)
+    updateText() 
   }
 
-  function renderData(duration=500) {
+  function updateText() {
+    var exp = ''
+    exp += term1 + '' 
+    exp += (operator + term2 + '' ? operator || '_' : separator + term2 + '' ? INPUT.SEPARATE : '') 
+    exp += (operator + term2 + '' ? term2 || '_' : '')
+    exp += equals + ''
+    exp += (equals? answer + '' || '_' : '')
+    txt.text(exp)
+  }
+
+  function renderData(duration=250) {
     var lines = svg.selectAll('line').data(line_data)
     lines 
       .transition()

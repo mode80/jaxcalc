@@ -18,7 +18,7 @@
     height:100%;
   }
 
-  svg line {
+  line , ellipse {
     shape-rendering: crispEdges;
     stroke: steelblue;
     stroke-linecap:round;
