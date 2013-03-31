@@ -606,8 +606,8 @@ module D3 {
         */
         format(specifier: string): (value: number) => string;
 
-        /* Returns array of x and y coordinates for each touch associated with the current d3.event */
-        touches(container: any): Array[];
+        /* Returns array of Touch objext for each touch associated with the current d3.event */
+        touches(container: any, idfn?: (d,i) => any): Object[];
     }
 
     interface Xhr {

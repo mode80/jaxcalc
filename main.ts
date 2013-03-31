@@ -25,7 +25,8 @@ module calcsand {  // expression related vars
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
   var stroke_rule 
-  var svg_w = 768, svg_h = 1024
+  var long_side = 1024, short_side = 768
+  var svg_w = short_side, svg_h = long_side 
   var display_x, display_y
 
   // d3 selection vars
@@ -36,7 +37,6 @@ module calcsand {  // expression related vars
   }) 
   var txt = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.055})
   var debug = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.9})
-  var touch_lines : D3.UpdateSelection
 
   // other module level vars
   var lastTouchEndTime = 0 
@@ -49,12 +49,117 @@ module calcsand {  // expression related vars
     // setup drawing space
       resizeDigits() 
       makeBorder()
+      onOrientationChange()
 
     // attach events
+      ;(<any>window).onorientationchange =  onOrientationChange
       body.on('keypress', onKeyPress) 
       body.on('touchstart', onTouchStart) 
          .on('touchmove', onTouchMove)   
-         .on('touchend', onTouchEnd) 
+         .on('touchend', onTouchEnd)
+
+  }
+
+  function onOrientationChange() {
+    switch ((<any>window).orientation) {
+      case 0, 180:
+        svg_w = short_side; svg_h = long_side;
+        break
+      case 90, -90:
+        svg_h = short_side; svg_w = long_side;
+        break
+    }
+    svg.attr('viewBox', '0 0 ' + svg_w + ' ' + svg_h)
+    resizeDigits()
+    window.scrollTo(0, 1);
+  }
+
+  function onKeyPress() {
+    // translate keystrokes into generic input. gestures etc will come later
+    var char_code = (<any>d3.event).which
+    var char = String.fromCharCode(char_code)
+    var input = ""
+    if (isDigit(char)) input = char
+    if (isOperator(char)) input = char
+    if (char_code == 13 || char == '=') input = INPUT.EQUALS
+    if (char == 'c') input = INPUT.CLEAR
+    if (char == '|') input = INPUT.SEPARATE
+    processInput(input)
+  }
+
+  function onTouchStart() {
+
+    d3.event.preventDefault()
+
+    touchLines().enter()
+      .append("line")
+      .attr("class", "touch")
+      .attr("x1", function (d) { return d[0]})
+      .attr("y1", function (d) { return d[1] })
+      .attr("x2", function (d) { return d[0] })
+      .attr("y2", function (d) { return d[1] })
+      .style("fill", "none")
+      .transition().ease('elastic')
+        .attr("stroke-width", Math.max(svg_h,svg_w)/10)
+        .attr("opacity", 0.2)
+        .attr("x1", function (d) { return d[0] })
+        .attr("y1", function (d) { return d[1] })
+        .attr("x2", function (d) { return d[0] })
+        .attr("y2", function (d) { return d[1] })
+  }
+
+  function onTouchMove() {
+
+    d3.event.preventDefault()
+    
+    touchLines()
+      .attr("x1", function (d) { return d[0] })
+      .attr("y1", function (d) { return d[1] })
+      .attr("x2", function (d) { return d[0] })
+      .attr("y2", function (d) { return d[1] })
+
+  }
+
+  function onTouchEnd() {
+
+    d3.event.preventDefault()
+   
+    var still_touching_count = touchArray().length
+    var exit_lines = touchLines().exit() // the lines no longer being touched 
+    lastTouchEndTime = Date.now()
+
+    // PINCH to add
+    if (d3.event.scale < 0.8) { processInput(INPUT.ADD); return }
+
+    // UNPINCH to subtract
+    if (d3.event.scale > 1.2) { processInput(INPUT.SUBTRACT); return }
+ 
+    if (still_touching_count == 0) { // all have been released
+      var released_count = exit_lines[0].length
+      exit_lines.classed('touch', null)
+
+      // ONE SWIPE UP to separate
+      if (released_count == 1) {
+        //TODO
+      }
+
+
+      // NO GESTURE
+      if (released_count == 10) { // 10 fingers are special
+        processInput('1'); processInput('0')
+      } else { // use the released finger count as digit input
+        processInput(released_count + '')
+      }
+    }
+
+  }
+   
+  function touchArray() {
+    return d3.touches(svg.node())
+  }
+  
+  function touchLines() {
+    return svg.selectAll("line.touch").data(touchArray(), (d,i) => { return d.identifier })
   }
 
   function resizeDigits() {
@@ -89,78 +194,6 @@ module calcsand {  // expression related vars
     svg.append('rect').attr({ 'class': 'border', x: 0, y: svg_h-border_size, width: svg_w, height: border_size})
     svg.append('rect').attr({ 'class': 'border', x: 0, y: 0, width: border_size, height: svg_h })
     svg.append('rect').attr({ 'class': 'border', x: svg_w - border_size, y: 0, width: border_size, height: svg_h })
-  }
-
-  function onKeyPress() {
-    // translate keystrokes into generic input. gestures etc will come later
-    var char_code = (<any>d3.event).which
-    var char = String.fromCharCode(char_code)
-    var input = ""
-    if (isDigit(char)) input = char
-    if (isOperator(char)) input = char
-    if (char_code == 13 || char == '=') input = INPUT.EQUALS
-    if (char == 'c') input = INPUT.CLEAR
-    if (char == '|') input = INPUT.SEPARATE
-    processInput(input)
-  }
-
-  function onTouchStart() {
-
-    touch_lines = selectionForTouches()
-
-    touch_lines.enter()
-        .append("line")
-        .attr("class", "touch")
-        .attr("x1", function (d) { return d[0] })
-        .attr("y1", function (d) { return d[1] })
-        .attr("x2", function (d) { return d[0] })
-        .attr("y2", function (d) { return d[1] })
-        .style("fill", "none")
-        .transition().ease('elastic')
-          .attr("stroke-width", Math.max(svg_h,svg_w)/10)
-          .attr("opacity", 0.2)
-          .attr("x1", function (d) { return d[0] })
-          .attr("y1", function (d) { return d[1]/*-digit_half_w*/ })
-          .attr("x2", function (d) { return d[0] })
-          .attr("y2", function (d) { return d[1]/*+digit_half_w*/ })
-  }
-
-  function onTouchMove() {
-
-    touch_lines = selectionForTouches()
-    
-    touch_lines
-        .attr("x1", function (d) { return d[0] })
-        .attr("y1", function (d) { return d[1]/*-digit_half_w*/ })
-        .attr("x2", function (d) { return d[0] })
-        .attr("y2", function (d) { return d[1]/*+digit_half_w*/ })
-
-  }
-
-  function onTouchEnd() {
-    touch_lines = selectionForTouches()
-   
-    var still_touching_count = d3.touches( svg.node() ).length
-    var exit_lines = touch_lines.exit() // the lines no longer being touched 
-
-    if (still_touching_count == 0) { // all have been released
-      var released_count = exit_lines[0].length
-      exit_lines.classed('touch', null)
-      if (released_count == 10) { // 10 fingers are special
-        processInput('1'); processInput('0')
-      } else { // use the released finger count as digit input
-        processInput(released_count + '')
-      }
-    }
- 
-    lastTouchEndTime = Date.now()
-  }
-   
-  function selectionForTouches():D3.UpdateSelection {
-    ; d3.event.preventDefault()
-    var touch_array = d3.touches( svg.node() )
-    debug.text(touch_array)
-    return svg.selectAll("line.touch").data(touch_array)
   }
 
   export function processInput(input: string /** INPUT enum **/) {
