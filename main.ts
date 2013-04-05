@@ -1,4 +1,6 @@
 ﻿/// <reference path="d3.d.ts" />
+/// <reference path="sugar.d.ts" />
+/// <reference path="custom.d.ts" />
 
 module calcsand {  // expression related vars
   var term1 = "", term2 = ""
@@ -43,6 +45,9 @@ module calcsand {  // expression related vars
 
   function main() {
     
+    // extend default objects with sugar
+      Object.extend()
+
     // setup drawing space
       onOrientationChange()
 
@@ -90,9 +95,12 @@ module calcsand {  // expression related vars
     processInput(input)
   }
 
+  var start_touches = []
   function onTouchStart() {
 
     d3.event.preventDefault()
+
+    start_touches[d3.event.changedTouches[0].identifier] = d3.event.changedTouches[0].clone()
 
     touchLines().enter()
       .append("line")
@@ -127,28 +135,34 @@ module calcsand {  // expression related vars
 
     d3.event.preventDefault()
    
-    var still_touching_count = touchArray().length
+    var swipe_min = long_side * 0.10
+    var touches = touchArray()
+    var still_touching_count = touches.length
     var exit_lines = touchLines().exit() // the lines no longer being touched 
     lastTouchEndTime = Date.now()
 
     // PINCH to add
-    if (d3.event.scale < 0.8) { processInput(INPUT.ADD); return }
+    if (d3.event.scale < 0.5) { processInput(INPUT.ADD); return }
 
     // UNPINCH to subtract
-    if (d3.event.scale > 1.2) { processInput(INPUT.SUBTRACT); return }
+    if (d3.event.scale > 1.5) { processInput(INPUT.SUBTRACT); return }
  
     if (still_touching_count == 0) { // all have been released
       var released_count = exit_lines[0].length
       exit_lines.classed('touch', null)
 
       // ONE SWIPE UP to separate
-      if (released_count == 1) {
-        //TODO
-      }
-
-
+      var this_touch:Touch = d3.event.changedTouches[0]
+      var swipe_travel = Math.abs(this_touch.clientX - start_touches[this_touch.identifier].clientX)
+      var swipe_travel = Math.max(
+        swipe_travel,
+        Math.abs(this_touch.clientY - start_touches[this_touch.identifier].clientY)
+      )
+      if (released_count == 1 && (swipe_travel > swipe_min) ) 
+        processInput(INPUT.SEPARATE)
+      
       // NO GESTURE
-      if (released_count == 10) { // 10 fingers are special
+      else if (released_count == 10) { // 10 fingers are special
         processInput('1'); processInput('0')
       } else { // use the released finger count as digit input
         processInput(released_count + '')

@@ -2,10 +2,10 @@
 interface Touch {
   identifier: number;
   target: EventTarget;
-  screenX: number;
-  screenY: number;
   clientX: number;
   clientY: number;
+  screenX: number;
+  screenY: number;
   pageX: number;
   pageY: number;
 };
