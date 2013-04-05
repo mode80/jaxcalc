@@ -149,20 +149,27 @@ module calcsand {  // expression related vars
  
     if (still_touching_count == 0) { // all have been released
       var released_count = exit_lines[0].length
+      var this_touch:Touch = d3.event.changedTouches[0]
       exit_lines.classed('touch', null)
 
-      // ONE SWIPE UP to separate
-      var this_touch:Touch = d3.event.changedTouches[0]
-      var swipe_travel = Math.abs(this_touch.clientX - start_touches[this_touch.identifier].clientX)
-      var swipe_travel = Math.max(
-        swipe_travel,
-        Math.abs(this_touch.clientY - start_touches[this_touch.identifier].clientY)
-      )
-      if (released_count == 1 && (swipe_travel > swipe_min) ) 
-        processInput(INPUT.SEPARATE)
-      
+      if (released_count == 0 ) return
+
+      if (released_count == 1) { // just one finger 
+
+        // SWIPE VERTICLE to separate
+        var verti_travel = Math.abs(this_touch.clientY - start_touches[this_touch.identifier].clientY)
+        if (verti_travel > swipe_min) { processInput(INPUT.SEPARATE); return }
+
+        // SWIPE RIGHT for equals
+        var hori_travel = this_touch.clientX - start_touches[this_touch.identifier].clientX
+        if (hori_travel > swipe_min) { processInput(INPUT.EQUALS); return }
+
+        // SWIPE LEFT for clear
+        if (hori_travel < -swipe_min) { processInput(INPUT.CLEAR); return }
+      }
+
       // NO GESTURE
-      else if (released_count == 10) { // 10 fingers are special
+      if (released_count == 10) { // 10 fingers are special
         processInput('1'); processInput('0')
       } else { // use the released finger count as digit input
         processInput(released_count + '')
@@ -230,24 +237,24 @@ module calcsand {  // expression related vars
     if (input == INPUT.SEPARATE) {
       separator = INPUT.SEPARATE
     }
-    // OPERATOR
+    // OPERATOR 
     if (isOperator(input)) {
+      operator = input
       if (answer.length) { 
         // in the case where previous answer is in play, use that as term1 of a fresh expression
         var temp = answer
         resetToStart()
+        operator = input
         term1 = temp 
       }
       if (term1.length && term2.length && operator.length && answer.length == 0) { 
-        // in the case where all is collected without an answer, find one first 
-        findAnswer()
-        processInput(input)
+        // in the case where all is collected but no answer, imply equals 
+        equals = INPUT.EQUALS
       }
-      if (term1.length) { 
-        // as long as we have a term1, do the normal thing
+      else if (term1.length) { 
+        // if we had just a term1, and now an operator, supply all the rest and wait for term2
         separator = INPUT.SEPARATE
         if (term2.length) equals = INPUT.EQUALS
-        operator = input
       }
     }
     // EQUALS
@@ -283,7 +290,7 @@ module calcsand {  // expression related vars
     resizeDigits()
     if (answer.length) {
       makeRenderingData(answer)
-      duration = 500
+      duration = 1000
     } else {
       makeRenderingData(term1, term2)
       duration = 0
