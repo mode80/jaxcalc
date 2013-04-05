@@ -24,19 +24,16 @@ module calcsand {  // expression related vars
   var svg_half_w , svg_half_h 
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
-  var stroke_rule 
-  var long_side = 1024, short_side = 768
+  var stroke_rule  
+  var long_side = 1024, short_side = 768 
   var svg_w = short_side, svg_h = long_side 
   var display_x, display_y
 
   // d3 selection vars
   var body = d3.select('body') 
-  var svg = body.select('svg').attr({
-    viewBox: "0 0 " + svg_w + " " + svg_h,
-    preserveAspectRatio: 'none'
-  }) 
-  var txt = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.055})
-  var debug = svg.append('text').attr({ x: svg_w/2, y: svg_h * 0.9})
+  var svg = body.select('svg')
+  var txt = svg.append('text')
+  var debug = svg.append('text')
 
   // other module level vars
   var lastTouchEndTime = 0 
@@ -47,8 +44,6 @@ module calcsand {  // expression related vars
   function main() {
     
     // setup drawing space
-      resizeDigits() 
-      makeBorder()
       onOrientationChange()
 
     // attach events
@@ -61,17 +56,25 @@ module calcsand {  // expression related vars
   }
 
   function onOrientationChange() {
-    switch ((<any>window).orientation) {
-      case 0, 180:
-        svg_w = short_side; svg_h = long_side;
-        break
-      case 90, -90:
-        svg_h = short_side; svg_w = long_side;
-        break
+    var degrees_turned = (<any>window).orientation || 0
+
+    if (degrees_turned == 0 || degrees_turned == 180) {
+      svg_w = short_side; svg_h = long_side
+    } else {
+      svg_w = long_side; svg_h = short_side
     }
-    svg.attr('viewBox', '0 0 ' + svg_w + ' ' + svg_h)
+
+    //svg.attr('viewBox', '0 0 ' + svg_w + ' ' + svg_h)
+    //svg.attr('preserveAspectRatio', 'none')
+    svg.attr({ width: svg_w, height: svg_h })
+
+    // reposition elements
     resizeDigits()
+    debug.attr({ x: svg_w / 2, y: svg_h * 0.055 })
+    txt.attr({ x: svg_w / 2, y: svg_h * 0.055 })
     window.scrollTo(0, 1);
+    renderData()
+    remakeBorder()
   }
 
   function onKeyPress() {
@@ -188,7 +191,8 @@ module calcsand {  // expression related vars
     display_y = Math.round( svg_half_h - (digits_high * digit_half_h) - (digits_high - 1) * digit_y_margin ) 
   }
 
-  function makeBorder() {
+  function remakeBorder() {
+    d3.selectAll('rect').remove()
     var border_size = svg_h*0.02
     svg.append('rect').attr({ 'class': 'border', x: 0, y: 0, width: svg_w, height: border_size })
     svg.append('rect').attr({ 'class': 'border', x: 0, y: svg_h-border_size, width: svg_w, height: border_size})
