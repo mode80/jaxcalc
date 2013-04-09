@@ -17,7 +17,7 @@ module calcsand {  // expression related vars
   var INPUT = {
     0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
     DECIMAL: '.', ADD: '+', SUBTRACT: '-', MULTIPLY: '*', DIVIDE: '/', EQUALS: '=', CLEAR: 'c',
-    SEPARATE: '|',
+    SEPARATE: '|', BACKSPACE: 'b',
   }
 
   // dimension vars
@@ -90,6 +90,7 @@ module calcsand {  // expression related vars
     if (isDigit(char)) input = char
     if (isOperator(char)) input = char
     if (char_code == 13 || char == '=') input = INPUT.EQUALS
+    if (char == 'b') input = INPUT.BACKSPACE
     if (char == 'c') input = INPUT.CLEAR
     if (char == '|') input = INPUT.SEPARATE
     processInput(input)
@@ -156,16 +157,20 @@ module calcsand {  // expression related vars
 
       if (released_count == 1) { // just one finger 
 
-        // SWIPE VERTICLE to separate
-        var verti_travel = Math.abs(this_touch.clientY - start_touches[this_touch.identifier].clientY)
-        if (verti_travel > swipe_min) { processInput(INPUT.SEPARATE); return }
+        // SWIPE UP to separate
+        var verti_travel = this_touch.clientY - start_touches[this_touch.identifier].clientY
+        if (verti_travel < -swipe_min) { processInput(INPUT.SEPARATE); return }
+
+        // SWIPE DOWN for clear
+        if (verti_travel > swipe_min) { processInput(INPUT.CLEAR); return }
 
         // SWIPE RIGHT for equals
         var hori_travel = this_touch.clientX - start_touches[this_touch.identifier].clientX
         if (hori_travel > swipe_min) { processInput(INPUT.EQUALS); return }
 
-        // SWIPE LEFT for clear
-        if (hori_travel < -swipe_min) { processInput(INPUT.CLEAR); return }
+        // SWIPE LEFT for backspace 
+        if (hori_travel < -swipe_min) { processInput(INPUT.BACKSPACE); return }
+
       }
 
       // NO GESTURE
@@ -227,6 +232,11 @@ module calcsand {  // expression related vars
     // CLEAR
     if (input == INPUT.CLEAR ) { 
       resetToStart()
+    }
+    // BACKSPACE
+    if (input == INPUT.BACKSPACE) {
+      if (term2.length) term2 = term2.slice(0, -1)
+      else if (term1.length) term1 = term1.slice(0,-1)
     }
     // DIGIT
     if (isDigit(input)) { 
