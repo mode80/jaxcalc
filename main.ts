@@ -235,18 +235,13 @@ module calcsand {  // expression related vars
     }
     // SEPARATOR
     if (input == INPUT.SEPARATE) {
+      if (answer.length) answerToTerm1() 
       separator = INPUT.SEPARATE
     }
     // OPERATOR 
     if (isOperator(input)) {
       operator = input
-      if (answer.length) { 
-        // in the case where previous answer is in play, use that as term1 of a fresh expression
-        var temp = answer
-        resetToStart()
-        operator = input
-        term1 = temp 
-      }
+      if (answer.length) answerToTerm1() 
       if (term1.length && term2.length && operator.length && answer.length == 0) { 
         // in the case where all is collected but no answer, imply equals 
         equals = INPUT.EQUALS
@@ -267,6 +262,13 @@ module calcsand {  // expression related vars
     }
 
     showExpression()
+
+    function answerToTerm1() { // in the case where previous answer is in play, use that as term1 of a fresh expression
+        var temp = answer
+        resetToStart()
+        operator = input
+        term1 = temp 
+    }
 
   }
 
