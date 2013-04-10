@@ -15,10 +15,19 @@ module calcsand {  // expression related vars
 
   // valid input "enum"
   var INPUT = {
-    0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
-    DECIMAL: '.', ADD: '+', SUBTRACT: '-', MULTIPLY: '*', DIVIDE: '/', EQUALS: '=', CLEAR: 'c',
-    SEPARATE: '|', BACKSPACE: 'b',
+    0: '0', 1: '1', 2: '2', 3: '3', 4: '4', 5: '5',
+    6: '6', 7: '7', 8: '8', 9: '9', 10: '10',
+    DECIMAL: '.', ADD: '+', SUBTRACT: '-', MULTIPLY: '*', DIVIDE: '/',
+    EQUALS: '=', CLEAR: 'c', SEPARATE: '|', BACKSPACE: 'b',
   }
+
+  // some module vars
+  var long_side = 1024, short_side = 768 
+  var multitap_ms = 250 // milliseconds before consecutive taps are not considered a multitap gesture 
+  var multitap_count = 0 // recorded number of taps in latest mutiltap gesture 
+  var multitap_timer_id = 0 // the currently active multitap detection timer
+  var last_touchend_time = 0 // time of last touchend event
+  var start_touches = []
 
   // dimension vars
   var digit_w, digit_h 
@@ -27,7 +36,6 @@ module calcsand {  // expression related vars
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
   var stroke_rule  
-  var long_side = 1024, short_side = 768 
   var svg_w = short_side, svg_h = long_side 
   var display_x, display_y
 
@@ -37,9 +45,6 @@ module calcsand {  // expression related vars
   var txt = svg.append('text')
   var debug = svg.append('text')
 
-  // other module level vars
-  var lastTouchEndTime = 0 
-  
 
   main() // lets do this
 
@@ -75,7 +80,7 @@ module calcsand {  // expression related vars
 
     // reposition elements
     resizeDigits()
-    debug.attr({ x: svg_w / 2, y: svg_h * 0.055 })
+    debug.attr({ x: svg_w / 2, y: svg_h * 0.955 })
     txt.attr({ x: svg_w / 2, y: svg_h * 0.055 })
     window.scrollTo(0, 1);
     renderData()
@@ -96,12 +101,13 @@ module calcsand {  // expression related vars
     processInput(input)
   }
 
-  var start_touches = []
   function onTouchStart() {
 
     d3.event.preventDefault()
 
-    start_touches[d3.event.changedTouches[0].identifier] = d3.event.changedTouches[0].clone()
+    var id = d3.event.changedTouches[0].identifier
+    start_touches[id] = d3.event.changedTouches[0].clone()
+    start_touches[id].timestamp = Date.now()
 
     touchLines().enter()
       .append("line")
@@ -114,10 +120,6 @@ module calcsand {  // expression related vars
       .transition().ease('elastic')
         .attr("stroke-width", Math.max(svg_h,svg_w)/10)
         .attr("opacity", 0.2)
-        .attr("x1", function (d) { return d[0] })
-        .attr("y1", function (d) { return d[1] })
-        .attr("x2", function (d) { return d[0] })
-        .attr("y2", function (d) { return d[1] })
   }
 
   function onTouchMove() {
@@ -136,17 +138,16 @@ module calcsand {  // expression related vars
 
     d3.event.preventDefault()
    
-    var swipe_min = long_side * 0.10
+    var swipe_min = long_side * 0.05
     var touches = touchArray()
     var still_touching_count = touches.length
     var exit_lines = touchLines().exit() // the lines no longer being touched 
-    lastTouchEndTime = Date.now()
 
     // PINCH to add
-    if (d3.event.scale < 0.5) { processInput(INPUT.ADD); return }
+    if (d3.event.scale < 0.8) { processInput(INPUT.ADD); return }
 
     // UNPINCH to subtract
-    if (d3.event.scale > 1.5) { processInput(INPUT.SUBTRACT); return }
+    if (d3.event.scale > 1.2) { processInput(INPUT.SUBTRACT); return }
  
     if (still_touching_count == 0) { // all have been released
       var released_count = exit_lines[0].length
@@ -158,41 +159,62 @@ module calcsand {  // expression related vars
       if (released_count == 1) { // just one finger 
 
         // SWIPE UP to separate
-        var verti_travel = this_touch.clientY - start_touches[this_touch.identifier].clientY
+        var verti_travel =
+          this_touch.clientY - start_touches[this_touch.identifier].clientY
         if (verti_travel < -swipe_min) { processInput(INPUT.SEPARATE); return }
 
         // SWIPE DOWN for clear
         if (verti_travel > swipe_min) { processInput(INPUT.CLEAR); return }
 
         // SWIPE RIGHT for equals
-        var hori_travel = this_touch.clientX - start_touches[this_touch.identifier].clientX
+        var hori_travel =
+          this_touch.clientX - start_touches[this_touch.identifier].clientX
         if (hori_travel > swipe_min) { processInput(INPUT.EQUALS); return }
 
         // SWIPE LEFT for backspace 
         if (hori_travel < -swipe_min) { processInput(INPUT.BACKSPACE); return }
 
+        // MULTITAP for digit input 
+        var elapsed_ms = Date.now() - last_touchend_time
+        last_touchend_time = Date.now()
+        clearTimeout(multitap_timer_id) // clear any in progress 
+        multitap_timer_id = setTimeout( afterDelay , multitap_ms ) 
+        if (elapsed_ms < multitap_ms && elapsed_ms > 0) { multitap_count++; return }
+        multitap_count = 1
       }
 
-      // NO GESTURE
-      if (released_count == 10) { // 10 fingers are special
-        processInput('1'); processInput('0')
-      } else { // use the released finger count as digit input
-        processInput(released_count + '')
-      }
+      // DOUBLETAP 
+      function afterDelay() {
+        //if (multitap_count > 1 && multitap_count < 10)
+          processInput(multitap_count + '')
+      } 
+
+    } // end if 
+      
+    // NO GESTURE
+    if (released_count == 10) { // 10 fingers are special
+      processInput('1'); processInput('0')
+    } else if (released_count > 1) { // use the released finger count as input (one finger is handled as multitouch elsewhere)
+      processInput(released_count + '')
     }
+        
 
-  }
+  } // end onTouchEnd
    
   function touchArray() {
     return d3.touches(svg.node())
   }
   
   function touchLines() {
-    return svg.selectAll("line.touch").data(touchArray(), (d,i) => { return d.identifier })
+    return svg.selectAll("line.touch").data(
+      touchArray(),
+      (d, i) => { return d.identifier }
+    )
   }
 
   function resizeDigits() {
-    digit_w = svg_w / ((answer.length || Math.max(term1.length, term2.length))+1) 
+    digit_w =
+      svg_w / ((answer.length || Math.max(term1.length, term2.length)) + 1)
     digit_h = svg_h / (answer.length? 1 : term2.length ? 2 : 1) 
     digit_x_margin = 0 
     digit_y_margin = digit_h * 0.15 
@@ -214,7 +236,8 @@ module calcsand {  // expression related vars
     var digits_high = term2.length ? 2 : 1 ;
     if (answer.length) { digits_wide = answer.length; digits_high = 1 } ;
     display_x = Math.round( svg_half_w - (digits_wide * digit_half_w) ) ;
-    display_y = Math.round( svg_half_h - (digits_high * digit_half_h) - (digits_high - 1) * digit_y_margin ) 
+    display_y = Math.round(svg_half_h - (digits_high * digit_half_h) -
+      (digits_high - 1) * digit_y_margin)
   }
 
   function remakeBorder() {
