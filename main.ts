@@ -1,4 +1,15 @@
-﻿/// <reference path="d3.d.ts" />
+﻿/* TODO
+  - pinch gets processed as 2 
+  - animate 'separate' as drag up to top position
+  - Mike's stacked perspective off in the distance to represente 10s, 100s etc  
+  - make the subtract gesture be drag offscreen
+  - make the subtract animation  (drag offscreen while top pieces fall into the 'hole' of the bottom)
+  - make multiply gesture (?)
+  - make multiply animation
+  - divide
+*/
+
+/// <reference path="d3.d.ts" />
 /// <reference path="sugar.d.ts" />
 /// <reference path="custom.d.ts" />
 
@@ -23,7 +34,7 @@ module calcsand {  // expression related vars
 
   // some module vars
   var long_side = 1024, short_side = 768 
-  var multitap_ms = 250 // milliseconds before consecutive taps are not considered a multitap gesture 
+  var multitap_ms = 500 // milliseconds before consecutive taps are not considered a multitap gesture 
   var multitap_count = 0 // recorded number of taps in latest mutiltap gesture 
   var multitap_timer_id = 0 // the currently active multitap detection timer
   var last_touchend_time = 0 // time of last touchend event
@@ -58,9 +69,9 @@ module calcsand {  // expression related vars
 
     // attach events
       ;(<any>window).onorientationchange =  onOrientationChange
-      body.on('keypress', onKeyPress) 
-      body.on('touchstart', onTouchStart) 
-         .on('touchmove', onTouchMove)   
+      body.on('keypress', onKeyPress)
+      body.on('touchstart', onTouchStart)
+         .on('touchmove', onTouchMove)
          .on('touchend', onTouchEnd)
 
   }
@@ -117,7 +128,7 @@ module calcsand {  // expression related vars
       .attr("x2", function (d) { return d[0] })
       .attr("y2", function (d) { return d[1] })
       .style("fill", "none")
-      .transition().ease('elastic')
+      .transition().ease("elastic")
         .attr("stroke-width", Math.max(svg_h,svg_w)/10)
         .attr("opacity", 0.2)
   }
@@ -125,7 +136,7 @@ module calcsand {  // expression related vars
   function onTouchMove() {
 
     d3.event.preventDefault()
-    
+
     touchLines()
       .attr("x1", function (d) { return d[0] })
       .attr("y1", function (d) { return d[1] })
@@ -142,63 +153,61 @@ module calcsand {  // expression related vars
     var touches = touchArray()
     var still_touching_count = touches.length
     var exit_lines = touchLines().exit() // the lines no longer being touched 
+    var released_count = exit_lines[0].length
+    var this_touch:Touch = d3.event.changedTouches[0]
+
+    if (still_touching_count > 0) return // do nothing until all fingers are released 
+
+    exit_lines.classed('touch', null) // undesignate touch lines so they can be used for digit rendering
+
+    if (released_count == 0 ) return // why's this here ? can't remember
+
+    if (released_count == 1) { // was just one finger 
+
+      // SWIPE UP to separate 
+      var verti_travel =
+        this_touch.clientY - start_touches[this_touch.identifier].clientY
+      if (verti_travel < -swipe_min) { processOut(INPUT.SEPARATE); return }
+
+      // SWIPE DOWN for clear
+      if (verti_travel > swipe_min) { processOut(INPUT.CLEAR); return }
+
+      // SWIPE RIGHT for equals
+      var hori_travel =
+        this_touch.clientX - start_touches[this_touch.identifier].clientX
+      if (hori_travel > swipe_min) { processOut(INPUT.EQUALS); return }
+
+      // SWIPE LEFT for backspace 
+      if (hori_travel < -swipe_min) { processOut(INPUT.BACKSPACE); return }
+
+      // MULTITAP for digit input 
+      /* 
+      var elapsed_ms = Date.now() - last_touchend_time
+      last_touchend_time = Date.now()
+      clearTimeout(multitap_timer_id) // clear any in progress 
+      multitap_timer_id = setTimeout( afterDelay, multitap_ms )
+      if (elapsed_ms < multitap_ms && elapsed_ms > 0) { multitap_count++; return }
+      multitap_count = 1
+      function afterDelay() { processOut(multitap_count + '') } 
+      */
+
+    } // end if just one finger
 
     // PINCH to add
-    if (d3.event.scale < 0.8) { processInput(INPUT.ADD); return }
+    if (d3.event.scale < 0.8) { processOut(INPUT.ADD); return }
 
     // UNPINCH to subtract
-    if (d3.event.scale > 1.2) { processInput(INPUT.SUBTRACT); return }
- 
-    if (still_touching_count == 0) { // all have been released
-      var released_count = exit_lines[0].length
-      var this_touch:Touch = d3.event.changedTouches[0]
-      exit_lines.classed('touch', null)
+    if (d3.event.scale > 1.2) { processOut(INPUT.SUBTRACT); return }
 
-      if (released_count == 0 ) return
+    // PURE RELEASE for digit input
+    for (var i = 0; i < (released_count + '').length; i++)
+      processOut((released_count + '').substr(i, 1))
 
-      if (released_count == 1) { // just one finger 
-
-        // SWIPE UP to separate
-        var verti_travel =
-          this_touch.clientY - start_touches[this_touch.identifier].clientY
-        if (verti_travel < -swipe_min) { processInput(INPUT.SEPARATE); return }
-
-        // SWIPE DOWN for clear
-        if (verti_travel > swipe_min) { processInput(INPUT.CLEAR); return }
-
-        // SWIPE RIGHT for equals
-        var hori_travel =
-          this_touch.clientX - start_touches[this_touch.identifier].clientX
-        if (hori_travel > swipe_min) { processInput(INPUT.EQUALS); return }
-
-        // SWIPE LEFT for backspace 
-        if (hori_travel < -swipe_min) { processInput(INPUT.BACKSPACE); return }
-
-        // MULTITAP for digit input 
-        var elapsed_ms = Date.now() - last_touchend_time
-        last_touchend_time = Date.now()
-        clearTimeout(multitap_timer_id) // clear any in progress 
-        multitap_timer_id = setTimeout( afterDelay , multitap_ms ) 
-        if (elapsed_ms < multitap_ms && elapsed_ms > 0) { multitap_count++; return }
-        multitap_count = 1
-      }
-
-      // DOUBLETAP 
-      function afterDelay() {
-        //if (multitap_count > 1 && multitap_count < 10)
-          processInput(multitap_count + '')
-      } 
-
-    } // end if 
-      
-    // NO GESTURE
-    if (released_count == 10) { // 10 fingers are special
-      processInput('1'); processInput('0')
-    } else if (released_count > 1) { // use the released finger count as input (one finger is handled as multitouch elsewhere)
-      processInput(released_count + '')
+    function processOut(input: string) {
+      exit_lines.classed('touch', null) // undesignate touch lines so they can be used for digit rendering
+      processInput(input)
     }
-        
-
+      
   } // end onTouchEnd
    
   function touchArray() {
@@ -206,10 +215,8 @@ module calcsand {  // expression related vars
   }
   
   function touchLines() {
-    return svg.selectAll("line.touch").data(
-      touchArray(),
-      (d, i) => { return d.identifier }
-    )
+    return svg.selectAll("line.touch")
+      .data(touchArray(), (d, i) => { return d.identifier })
   }
 
   function resizeDigits() {
@@ -257,9 +264,12 @@ module calcsand {  // expression related vars
       resetToStart()
     }
     // BACKSPACE
-    if (input == INPUT.BACKSPACE) {
+    if (input == INPUT.BACKSPACE  ) {
+      if (answer.length) { processInput(INPUT.CLEAR); return} // for an answer, treat backspace like clear
       if (term2.length) term2 = term2.slice(0, -1)
       else if (term1.length) term1 = term1.slice(0,-1)
+      else if (operator.length) operator = "" 
+      else if (separator.length) separator= "" 
     }
     // DIGIT
     if (isDigit(input)) { 
@@ -328,7 +338,7 @@ module calcsand {  // expression related vars
       duration = 1000
     } else {
       makeRenderingData(term1, term2)
-      duration = 0
+      duration = 500 
     }
     renderData(duration)
     updateText() 
@@ -347,8 +357,7 @@ module calcsand {  // expression related vars
   function renderData(duration=250) {
     var lines = svg.selectAll('line').data(line_data)
     lines 
-      .transition()
-      .duration(duration)
+      .transition().duration(duration)
       .attr('x1', (d) => { return d.x1 })
       .attr('x2', (d) => { return d.x2 })
       .attr('y1', (d) => { return d.y1 })
@@ -371,8 +380,7 @@ module calcsand {  // expression related vars
       .remove()
     var ellipses = svg.selectAll('ellipse').data(ellipse_data)
     ellipses 
-      .transition()
-      .duration(duration)
+      .transition().duration(duration)
       .attr('cx', (d) => { return d.cx })
       .attr('cy', (d) => { return d.cy })
       .attr('rx', (d) => { return d.rx })
@@ -396,7 +404,7 @@ module calcsand {  // expression related vars
    }
 
   function makeRenderingData(part1="", part2="") {
-    // takes expression parts (e.g. term1, term2, answer) and builds arrays of svg data for later rendering 
+    // takes expression parts (e.g. term1, term2, answer) and builds arrays of svg attributes for later rendering 
 
     // reset globals 
     line_data = []
