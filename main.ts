@@ -38,6 +38,7 @@ module calcsand {  // expression related vars
   var multitap_count = 0 // recorded number of taps in latest mutiltap gesture 
   var multitap_timer_id = 0 // the currently active multitap detection timer
   var last_touchend_time = 0 // time of last touchend event
+  var win = <any>window // loosely typed window object for access to newish safari goodies
   var start_touches = []
 
   // dimension vars
@@ -68,8 +69,8 @@ module calcsand {  // expression related vars
       onOrientationChange()
 
     // attach events
-      ;(<any>window).onorientationchange =  onOrientationChange
-      body.on('keypress', onKeyPress)
+      win.onorientationchange = onOrientationChange
+      win.onkeypress = onKeyPress
       body.on('touchstart', onTouchStart)
          .on('touchmove', onTouchMove)
          .on('touchend', onTouchEnd)
@@ -77,7 +78,7 @@ module calcsand {  // expression related vars
   }
 
   function onOrientationChange() {
-    var degrees_turned = (<any>window).orientation || 0
+    var degrees_turned = win.orientation || 0
 
     if (degrees_turned == 0 || degrees_turned == 180) {
       svg_w = short_side; svg_h = long_side
@@ -98,9 +99,9 @@ module calcsand {  // expression related vars
     remakeBorder()
   }
 
-  function onKeyPress() {
-    // translate keystrokes into generic input. gestures etc will come later
-    var char_code = (<any>d3.event).which
+  function onKeyPress(e) {
+    // translate keystrokes into generic input
+    var char_code = e.which 
     var char = String.fromCharCode(char_code)
     var input = ""
     if (isDigit(char)) input = char
@@ -162,25 +163,40 @@ module calcsand {  // expression related vars
 
     if (released_count == 0 ) return // why's this here ? can't remember
 
-    if (released_count == 1) { // was just one finger 
+    debug.text(d3.event.scale)
 
-      // SWIPE UP to separate 
-      var verti_travel =
-        this_touch.clientY - start_touches[this_touch.identifier].clientY
+    if (released_count == 2) { // two fingers.. possibly a pinchy gesture
+
+      var line1_x = exit_lines.data()[0][0], line2_x = exit_lines.data()[1][0]
+      var line1_y = exit_lines.data()[0][1], line2_y = exit_lines.data()[1][1]
+      var line1_id = exit_lines.data()[0]['identifier'], line2_id = exit_lines.data()[1]['identifier']
+      var verti_pinch = (line1_y - start_touches[line1_id].clientY) + (line2_y - start_touches[line2_id].clientY) // pixels of decreased vertical separation
+      var hori_pinch = (line1_x - start_touches[line1_id].clientX) + (line2_x - start_touches[line2_id].clientX) // pixels of decreased horizontal separation
+
+    // PINCH to add 
+      if (Math.max(verti_pinch,hori_pinch) > swipe_min*2) { processOut(INPUT.ADD); return }
+
+    // UNPINCH to subtract
+      if (Math.max(verti_pinch,hori_pinch) < -swipe_min*2) { processOut(INPUT.SUBTRACT); return }
+    }
+
+    else if (released_count == 1) { // was just one finger 
+
+    // SWIPE UP to separate 
+      var verti_travel = this_touch.clientY - start_touches[this_touch.identifier].clientY
       if (verti_travel < -swipe_min) { processOut(INPUT.SEPARATE); return }
 
-      // SWIPE DOWN for clear
+    // SWIPE DOWN for clear
       if (verti_travel > swipe_min) { processOut(INPUT.CLEAR); return }
 
-      // SWIPE RIGHT for equals
-      var hori_travel =
-        this_touch.clientX - start_touches[this_touch.identifier].clientX
+    // SWIPE RIGHT for equals
+      var hori_travel = this_touch.clientX - start_touches[this_touch.identifier].clientX
       if (hori_travel > swipe_min) { processOut(INPUT.EQUALS); return }
 
-      // SWIPE LEFT for backspace 
+    // SWIPE LEFT for backspace 
       if (hori_travel < -swipe_min) { processOut(INPUT.BACKSPACE); return }
 
-      // MULTITAP for digit input 
+    // MULTITAP for digit input 
       /* 
       var elapsed_ms = Date.now() - last_touchend_time
       last_touchend_time = Date.now()
@@ -192,12 +208,6 @@ module calcsand {  // expression related vars
       */
 
     } // end if just one finger
-
-    // PINCH to add
-    if (d3.event.scale < 0.8) { processOut(INPUT.ADD); return }
-
-    // UNPINCH to subtract
-    if (d3.event.scale > 1.2) { processOut(INPUT.SUBTRACT); return }
 
     // PURE RELEASE for digit input
     for (var i = 0; i < (released_count + '').length; i++)

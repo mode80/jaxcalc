@@ -762,6 +762,7 @@ module D3 {
         data: {
             (values: (data: any, index: number) => any): UpdateSelection;
             (values: any[], key?: (data: any, index: number) => any): UpdateSelection;
+            () : {}[]; //tgs
         };
 
         datum: {
