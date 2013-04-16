@@ -39,6 +39,7 @@ module calcsand {  // expression related vars
   var multitap_timer_id = 0 // the currently active multitap detection timer
   var last_touchend_time = 0 // time of last touchend event
   var win = <any>window // loosely typed window object for access to newish safari goodies
+  var body = document.getElementsByTagName('body')[0]
   var start_touches = []
 
   // dimension vars
@@ -47,13 +48,11 @@ module calcsand {  // expression related vars
   var svg_half_w , svg_half_h 
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
-  var stroke_rule  
   var svg_w = short_side, svg_h = long_side 
   var display_x, display_y
 
-  // d3 selection vars
-  var body = d3.select('body') 
-  var svg = body.select('svg')
+  // d3 element selection vars
+  var svg = d3.select('svg')
   var txt = svg.append('text')
   var debug = svg.append('text')
 
@@ -71,9 +70,9 @@ module calcsand {  // expression related vars
     // attach events
       win.onorientationchange = onOrientationChange
       win.onkeypress = onKeyPress
-      body.on('touchstart', onTouchStart)
-         .on('touchmove', onTouchMove)
-         .on('touchend', onTouchEnd)
+      win.ontouchstart = onTouchStart
+      win.ontouchmove = onTouchMove
+      win.ontouchend = onTouchEnd
 
   }
 
@@ -89,7 +88,7 @@ module calcsand {  // expression related vars
     //svg.attr('viewBox', '0 0 ' + svg_w + ' ' + svg_h)
     //svg.attr('preserveAspectRatio', 'none')
     svg.attr({ width: svg_w, height: svg_h })
-
+ 
     // reposition elements
     resizeDigits()
     debug.attr({ x: svg_w / 2, y: svg_h * 0.955 })
@@ -113,49 +112,48 @@ module calcsand {  // expression related vars
     processInput(input)
   }
 
-  function onTouchStart() {
+  function onTouchStart(e) {
 
-    d3.event.preventDefault()
+    e.preventDefault() 
 
-    var id = d3.event.changedTouches[0].identifier
-    start_touches[id] = d3.event.changedTouches[0].clone()
+    var id = e.changedTouches[0].identifier
+    start_touches[id] = e.changedTouches[0].clone()
     start_touches[id].timestamp = Date.now()
 
-    touchLines().enter()
+    touchLines(e.touches).enter()
       .append("line")
       .attr("class", "touch")
-      .attr("x1", function (d) { return d[0]})
-      .attr("y1", function (d) { return d[1] })
-      .attr("x2", function (d) { return d[0] })
-      .attr("y2", function (d) { return d[1] })
+      .attr("x1", function (d) { return d.clientX })
+      .attr("y1", function (d) { return d.clientY })
+      .attr("x2", function (d) { return d.clientX })
+      .attr("y2", function (d) { return d.clientY })
       .style("fill", "none")
       .transition().ease("elastic")
         .attr("stroke-width", Math.max(svg_h,svg_w)/10)
         .attr("opacity", 0.2)
   }
 
-  function onTouchMove() {
+  function onTouchMove(e) {
 
-    d3.event.preventDefault()
+    e.preventDefault()
 
-    touchLines()
-      .attr("x1", function (d) { return d[0] })
-      .attr("y1", function (d) { return d[1] })
-      .attr("x2", function (d) { return d[0] })
-      .attr("y2", function (d) { return d[1] })
+    touchLines(e.touches)
+      .attr("x1", function (d) { return d.clientX })
+      .attr("y1", function (d) { return d.clientY })
+      .attr("x2", function (d) { return d.clientX })
+      .attr("y2", function (d) { return d.clientY })
 
   }
 
-  function onTouchEnd() {
+  function onTouchEnd(e) {
 
-    d3.event.preventDefault()
+    e.preventDefault()
    
     var swipe_min = long_side * 0.05
-    var touches = touchArray()
-    var still_touching_count = touches.length
-    var exit_lines = touchLines().exit() // the lines no longer being touched 
+    var still_touching_count = e.touches.length
+    var exit_lines = touchLines(e.touches).exit() // the lines no longer being touched 
     var released_count = exit_lines[0].length
-    var this_touch:Touch = d3.event.changedTouches[0]
+    var this_touch:Touch = e.changedTouches[0]
 
     if (still_touching_count > 0) return // do nothing until all fingers are released 
 
@@ -163,12 +161,12 @@ module calcsand {  // expression related vars
 
     if (released_count == 0 ) return // why's this here ? can't remember
 
-    debug.text(d3.event.scale)
+    debug.text(e.scale)
 
     if (released_count == 2) { // two fingers.. possibly a pinchy gesture
 
-      var line1_x = exit_lines.data()[0][0], line2_x = exit_lines.data()[1][0]
-      var line1_y = exit_lines.data()[0][1], line2_y = exit_lines.data()[1][1]
+      var line1_x = exit_lines.data()[0]['clientX'], line2_x = exit_lines.data()[1]['clientX']
+      var line1_y = exit_lines.data()[0]['clientY'], line2_y = exit_lines.data()[1]['clientY']
       var line1_id = exit_lines.data()[0]['identifier'], line2_id = exit_lines.data()[1]['identifier']
       var verti_pinch = (line1_y - start_touches[line1_id].clientY) + (line2_y - start_touches[line2_id].clientY) // pixels of decreased vertical separation
       var hori_pinch = (line1_x - start_touches[line1_id].clientX) + (line2_x - start_touches[line2_id].clientX) // pixels of decreased horizontal separation
@@ -219,14 +217,10 @@ module calcsand {  // expression related vars
     }
       
   } // end onTouchEnd
-   
-  function touchArray() {
-    return d3.touches(svg.node())
-  }
-  
-  function touchLines() {
+
+  function touchLines(touch_list) {
     return svg.selectAll("line.touch")
-      .data(touchArray(), (d, i) => { return d.identifier })
+      .data(touch_list, (d, i) => { return d.identifier })
   }
 
   function resizeDigits() {
