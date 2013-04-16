@@ -1,5 +1,4 @@
 ﻿/* TODO
-  - pinch gets processed as 2 
   - animate 'separate' as drag up to top position
   - Mike's stacked perspective off in the distance to represente 10s, 100s etc  
   - make the subtract gesture be drag offscreen
@@ -152,7 +151,8 @@ module calcsand {  // expression related vars
 
     e.preventDefault()
    
-    var swipe_min = long_side * 0.05
+    var scale_min = 0.05 
+    var swipe_min = long_side * scale_min 
     var still_touching_count = e.touches.length
     var exit_lines = touchLines(e.touches).exit() // the lines no longer being touched 
     var released_count = exit_lines[0].length
@@ -168,25 +168,11 @@ module calcsand {  // expression related vars
 
     if (released_count == 2) { // two fingers.. possibly a pinchy gesture
 
-      if (exit_lines.data()[0]['clientX'] > exit_lines.data()[1]['clientX']) {
-        var first = 0, second = 1
-      } else {
-        var first = 1, second = 0
-      }
-      var line1_x = exit_lines.data()[first]['clientX']
-      var line2_x = exit_lines.data()[second]['clientX']
-      var line1_y = exit_lines.data()[first]['clientY']
-      var line2_y = exit_lines.data()[second]['clientY']
-      var line1_id = exit_lines.data()[first]['identifier']
-      var line2_id = exit_lines.data()[second]['identifier']
-      var verti_pinch = (start_touches[line1_id].clientY - line1_y ) + (line2_y - start_touches[line2_id].clientY) // pixels of decreased vertical separation
-      var hori_pinch = (start_touches[line1_id].clientX - line1_x ) + (line2_x - start_touches[line2_id].clientX) // pixels of decreased horizontal separation
-
     // PINCH to add 
-      if (Math.max(verti_pinch,hori_pinch) > swipe_min*2) { processOut(INPUT.ADD); return }
+      if (e.scale < (1 - scale_min)) { processOut(INPUT.ADD); return }
 
     // UNPINCH to subtract
-      if (Math.min(verti_pinch,hori_pinch) < -swipe_min*2) { processOut(INPUT.SUBTRACT); return }
+      if (e.scale > scale_min) { processOut(INPUT.SUBTRACT); return }
     }
 
     else if (released_count == 1) { // was just one finger 
