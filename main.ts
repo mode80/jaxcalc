@@ -116,9 +116,12 @@ module calcsand {  // expression related vars
 
     e.preventDefault() 
 
-    var id = e.changedTouches[0].identifier
-    start_touches[id] = e.changedTouches[0].clone()
-    start_touches[id].timestamp = Date.now()
+    var len = e.changedTouches.length
+    while (len--) {
+      var id = e.changedTouches[len].identifier
+      start_touches[id] = e.changedTouches[len].clone()
+      start_touches[id].timestamp = Date.now()
+    }
 
     touchLines(e.touches).enter()
       .append("line")
@@ -165,34 +168,48 @@ module calcsand {  // expression related vars
 
     if (released_count == 2) { // two fingers.. possibly a pinchy gesture
 
-      var line1_x = exit_lines.data()[0]['clientX'], line2_x = exit_lines.data()[1]['clientX']
-      var line1_y = exit_lines.data()[0]['clientY'], line2_y = exit_lines.data()[1]['clientY']
-      var line1_id = exit_lines.data()[0]['identifier'], line2_id = exit_lines.data()[1]['identifier']
-      var verti_pinch = (line1_y - start_touches[line1_id].clientY) + (line2_y - start_touches[line2_id].clientY) // pixels of decreased vertical separation
-      var hori_pinch = (line1_x - start_touches[line1_id].clientX) + (line2_x - start_touches[line2_id].clientX) // pixels of decreased horizontal separation
+      if (exit_lines.data()[0]['clientX'] > exit_lines.data()[1]['clientX']) {
+        var first = 0, second = 1
+      } else {
+        var first = 1, second = 0
+      }
+      var line1_x = exit_lines.data()[first]['clientX']
+      var line2_x = exit_lines.data()[second]['clientX']
+      var line1_y = exit_lines.data()[first]['clientY']
+      var line2_y = exit_lines.data()[second]['clientY']
+      var line1_id = exit_lines.data()[first]['identifier']
+      var line2_id = exit_lines.data()[second]['identifier']
+      var verti_pinch = (start_touches[line1_id].clientY - line1_y ) + (line2_y - start_touches[line2_id].clientY) // pixels of decreased vertical separation
+      var hori_pinch = (start_touches[line1_id].clientX - line1_x ) + (line2_x - start_touches[line2_id].clientX) // pixels of decreased horizontal separation
 
     // PINCH to add 
       if (Math.max(verti_pinch,hori_pinch) > swipe_min*2) { processOut(INPUT.ADD); return }
 
     // UNPINCH to subtract
-      if (Math.max(verti_pinch,hori_pinch) < -swipe_min*2) { processOut(INPUT.SUBTRACT); return }
+      if (Math.min(verti_pinch,hori_pinch) < -swipe_min*2) { processOut(INPUT.SUBTRACT); return }
     }
 
     else if (released_count == 1) { // was just one finger 
 
-    // SWIPE UP to separate 
       var verti_travel = this_touch.clientY - start_touches[this_touch.identifier].clientY
-      if (verti_travel < -swipe_min) { processOut(INPUT.SEPARATE); return }
-
-    // SWIPE DOWN for clear
-      if (verti_travel > swipe_min) { processOut(INPUT.CLEAR); return }
-
-    // SWIPE RIGHT for equals
       var hori_travel = this_touch.clientX - start_touches[this_touch.identifier].clientX
-      if (hori_travel > swipe_min) { processOut(INPUT.EQUALS); return }
 
-    // SWIPE LEFT for backspace 
-      if (hori_travel < -swipe_min) { processOut(INPUT.BACKSPACE); return }
+      if (Math.abs(verti_travel) >= Math.abs(hori_travel)) {
+
+      // SWIPE UP to separate 
+        if (verti_travel < -swipe_min) { processOut(INPUT.SEPARATE); return }
+
+      // SWIPE DOWN for clear
+        if (verti_travel > swipe_min) { processOut(INPUT.CLEAR); return }
+
+      } else {
+
+      // SWIPE RIGHT for equals
+        if (hori_travel > swipe_min) { processOut(INPUT.EQUALS); return }
+
+      // SWIPE LEFT for backspace 
+        if (hori_travel < -swipe_min) { processOut(INPUT.BACKSPACE); return }
+      }
 
     // MULTITAP for digit input 
       /* 
