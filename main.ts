@@ -1,5 +1,5 @@
 ﻿/* TODO
-  - animate 'separate' as drag up to top position
+  - refix for scale not working consistenty
   - Mike's stacked perspective off in the distance to represente 10s, 100s etc  
   - make the subtract gesture be drag offscreen
   - make the subtract animation  (drag offscreen while top pieces fall into the 'hole' of the bottom)
@@ -47,6 +47,7 @@ module calcsand {  // expression related vars
   var svg_half_w , svg_half_h 
   var digit_half_w , digit_half_h 
   var digit_full_w , digit_full_h 
+  var digit_half_full_w , digit_half_full_h 
   var svg_w = short_side, svg_h = long_side 
   var display_x, display_y
 
@@ -172,7 +173,7 @@ module calcsand {  // expression related vars
       if (e.scale < (1 - scale_min)) { processOut(INPUT.ADD); return }
 
     // UNPINCH to subtract
-      if (e.scale > scale_min) { processOut(INPUT.SUBTRACT); return }
+      if (e.scale > 1 + scale_min) { processOut(INPUT.SUBTRACT); return }
     }
 
     else if (released_count == 1) { // was just one finger 
@@ -228,10 +229,10 @@ module calcsand {  // expression related vars
 
   function resizeDigits() {
     digit_w =
-      svg_w / ((answer.length || Math.max(term1.length, term2.length)) + 1)
+      svg_w / ((answer.length || Math.max(term1.length, term2.length)) +1)
     digit_h = svg_h / (answer.length? 1 : term2.length ? 2 : 1) 
     digit_x_margin = 0 
-    digit_y_margin = digit_h * 0.15 
+    digit_y_margin = digit_h * 0.05 
     digit_w -= digit_x_margin * 2 
     digit_h -= digit_y_margin * 2 
     digit_w = Math.min(digit_w, digit_h) 
@@ -241,17 +242,21 @@ module calcsand {  // expression related vars
     digit_half_w = digit_w / 2 
     digit_half_h = digit_h / 2 
     digit_full_w = digit_w + (digit_x_margin*2) 
-    digit_full_h = digit_h + (digit_y_margin*2)     
-    recenterDisplay()
+    digit_full_h = digit_h + (digit_y_margin*2)
+    digit_half_full_w = digit_full_w / 2
+    digit_half_full_h = digit_full_h / 2 
+    recenterDisplayXYs()
   }
   
-  function recenterDisplay() {
+  function recenterDisplayXYs() {
     var digits_wide = Math.max(term1.length, term2.length) ;
-    var digits_high = term2.length ? 2 : 1 ;
-    if (answer.length) { digits_wide = answer.length; digits_high = 1 } ;
-    display_x = Math.round( svg_half_w - (digits_wide * digit_half_w) ) ;
-    display_y = Math.round(svg_half_h - (digits_high * digit_half_h) -
-      (digits_high - 1) * digit_y_margin)
+    var digits_high = 1
+    if (term2.length) digits_high = 2
+    if (term1.length && operator.length) digits_high = 2
+    if (term1.length && separator.length) digits_high = 2
+    if (answer.length) { digits_wide = answer.length; digits_high = 1 } 
+    display_x = Math.round(svg_half_w - (digits_wide * digit_half_w) )
+    display_y = Math.round(svg_half_h - (digits_high * digit_half_h) )
   }
 
   function remakeBorder() {
@@ -339,14 +344,9 @@ module calcsand {  // expression related vars
 
   function showExpression() {
     var duration = 0 
+    if (answer.length) duration = 1000; else duration = 500 
     resizeDigits()
-    if (answer.length) {
-      makeRenderingData(answer)
-      duration = 1000
-    } else {
-      makeRenderingData(term1, term2)
-      duration = 500 
-    }
+    makeRenderingData()
     renderData(duration)
     updateText() 
   }
@@ -410,26 +410,30 @@ module calcsand {  // expression related vars
       .remove()
    }
 
-  function makeRenderingData(part1="", part2="") {
-    // takes expression parts (e.g. term1, term2, answer) and builds arrays of svg attributes for later rendering 
+  function makeRenderingData() {
+    // uses expression parts (e.g. term1, term2, answer etc) and builds arrays of svg attributes for later rendering 
 
-    // reset globals 
+    // reset the data arrays we're (re)building 
     line_data = []
     ellipse_data = []
-    
+
+    // set up to render the appropriate thing based on what we have 
+    var part1 = "", part2 = ""
+    if (answer.length) { part1 = answer } else { part1 = term1; part2 = term2 }
+
     // pad shortest term with spaces to keep same-significant digits in sync
     part1 = Array(Math.max(part2.length - part1.length + 1, 0)).join(" ") + (part1 + "")
     part2 = Array(Math.max(part1.length - part2.length + 1, 0)).join(" ") + (part2 + "")
-
-    // package parts for rendering into an array that we can iterate over
+  
+    // package parts into an array that we can iterate over
     var parts = [part1,part2]
 
     // prep some other vars
-    var digit_inc = 0  // this will count up
     var max_digits = Math.max(part1.length,part2.length)
     var digit_i = max_digits // this will count down
+    var digit_inc = 0  // this will count up
     var multiplier = 1 // this could go up to 10 after 1st digit for more intuitive line group animation
-    var line_w = Math.round(digit_w * 0.05) 
+    var line_w = Math.round(digit_w * 0.05) // line width is a percentage of digit width 
     
     // take each digit from each part in turn
     while (digit_i--) { // loop through each digit, starting with least significant 
@@ -524,13 +528,10 @@ module calcsand {  // expression related vars
 
     } // end digit_i loop 
 
-    part1 = part1.trim()
-    part2 = part2.trim()
-
   } // end function 
 
-  function x(d) { return Math.round(d * digit_w/100) }
-  function y(d) { return Math.round(d * digit_h/100) }
+  function x(d) { return Math.round(d * digit_w/100) } // scales widths of 0-100 to pixels
+  function y(d) { return Math.round(d * digit_h/100) } // scales heights of 0-100 to pixels
 
   function isDigit(char: string): bool { return ("1234567890.".indexOf(char) >= 0) }
   function isOperator(char: string): bool { return ("*-+/".indexOf(char) >= 0) }
