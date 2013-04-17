@@ -166,14 +166,24 @@ module calcsand {  // expression related vars
     if (released_count == 0 ) return // why's this here ? can't remember
 
     debug.text(e.scale)
-
     if (released_count == 2) { // two fingers.. possibly a pinchy gesture
 
-    // PINCH to add 
-      if (e.scale < (1 - scale_min)) { processOut(INPUT.ADD); return }
+      var first = 0, second = 1
+      var point1_id = exit_lines.data()[first]['identifier']
+      var point2_id = exit_lines.data()[second]['identifier']
 
-    // UNPINCH to subtract
-      if (e.scale > 1 + scale_min) { processOut(INPUT.SUBTRACT); return }
+      var hypotenuse1 = hypotenuse( 
+        start_touches[point1_id].clientX, start_touches[point1_id].clientY,
+        start_touches[point2_id].clientX, start_touches[point2_id].clientY ) 
+      var hypotenuse2 = hypotenuse(
+        exit_lines.data()[first]['clientX'], exit_lines.data()[first]['clientY'],
+        exit_lines.data()[second]['clientX'], exit_lines.data()[second]['clientY'] )
+      
+      // PINCH to add 
+      if (hypotenuse1-hypotenuse2 > swipe_min ) { processOut(INPUT.ADD); return }
+
+      // UNPINCH to subtract
+      if (hypotenuse2-hypotenuse1 > swipe_min ) { processOut(INPUT.SUBTRACT); return }
     }
 
     else if (released_count == 1) { // was just one finger 
@@ -536,5 +546,6 @@ module calcsand {  // expression related vars
   function isDigit(char: string): bool { return ("1234567890.".indexOf(char) >= 0) }
   function isOperator(char: string): bool { return ("*-+/".indexOf(char) >= 0) }
 
+  function hypotenuse(x1,y1,x2,y2){return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))} // diagonal distance between two point cooridnates
 
 } // end module
