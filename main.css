@@ -13,7 +13,7 @@
   line , ellipse {
     shape-rendering: crispEdges;
     stroke: steelblue;
-    stroke-linecap:round;
+    stroke-linecap:square;
     fill:none;
   }
 
