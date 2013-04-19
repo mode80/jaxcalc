@@ -1,5 +1,4 @@
 ﻿/* TODO
-  - fix renderData back to separate passes for ellipses
   - make the subtract animation  (drag offscreen while top pieces fall into the 'hole' of the bottom)
   - numbers don't fit in horizontal orientation 
   - handle decimals
@@ -24,7 +23,6 @@ module calcsand {  // expression related vars
 
   // rendering related vars
   var line_data:Object[] = []
-  var ellipse_data:Object[] = []
 
   // valid input "enum"
   var INPUT = {
@@ -352,7 +350,7 @@ module calcsand {  // expression related vars
     term1 = ""; term2 = ""
     operator = ""; separator = "" 
     equals = "";  answer = "";
-    line_data = []; ellipse_data = []
+    line_data = [] 
   }
 
   function showExpression() {
@@ -386,47 +384,40 @@ module calcsand {  // expression related vars
   function renderData(duration=250, after_delay=0) {
 
     var lines = svg.selectAll('line').data(line_data)
-    var ellipses = svg.selectAll('ellipse').data(ellipse_data)
-    var i = 2
 
-    while (i--) { // for each shape type
+    lines 
+      .transition().duration(duration).delay(after_delay)
+      .attr('x1', (d) => { return d.x1 })
+      .attr('x2', (d) => { return d.x2 })
+      .attr('y1', (d) => { return d.y1 })
+      .attr('y2', (d) => { return d.y2 })
+      .attr('opacity', (d) => { return d.o })
+      .attr('stroke-width', (d) => { return d.w })
+      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
 
-      var shapes = [lines, ellipses][i]
+    lines
+      .enter()
+      .append('line')
+      .attr('x1', (d) => { return d.x1 })
+      .attr('x2', (d) => { return d.x2 })
+      .attr('y1', (d) => { return d.y1 })
+      .attr('y2', (d) => { return d.y2 })
+      .attr('opacity', (d) => { return d.o })
+      .attr('stroke-width', (d) => { return d.w })
+      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
 
-      shapes
-        .transition().duration(duration).delay(after_delay)
-        .attr('x1', (d) => { return d.x1 })
-        .attr('x2', (d) => { return d.x2 })
-        .attr('y1', (d) => { return d.y1 })
-        .attr('y2', (d) => { return d.y2 })
-        .attr('opacity', (d) => { return d.o })
-        .attr('stroke-width', (d) => { return d.w })
-        .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
+    lines
+      .exit()
+      .transition().duration(duration).delay(after_delay)
+      .attr('opacity', (d) => { return 0 })
+      .attr('stroke-width', (d) => { return 0 })
+      .attr('x1', (d) => { return (d.x1+d.x2)/2 })
+      .attr('x2', (d) => { return (d.x1+d.x2)/2 })
+      .attr('y1', (d) => { return (d.x1+d.x2)/2 })
+      .attr('y2', (d) => { return (d.x1+d.x2)/2 })
 
-      shapes
-        .enter()
-        .append('line')
-        .attr('x1', (d) => { return d.x1 })
-        .attr('x2', (d) => { return d.x2 })
-        .attr('y1', (d) => { return d.y1 })
-        .attr('y2', (d) => { return d.y2 })
-        .attr('opacity', (d) => { return d.o })
-        .attr('stroke-width', (d) => { return d.w })
-        .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
+    setTimeout(() => { lines.exit().remove() }, after_delay*2)
 
-      shapes
-        .exit()
-        .transition().duration(duration).delay(after_delay)
-        .attr('opacity', (d) => { return 0 })
-        .attr('stroke-width', (d) => { return 0 })
-        .attr('x1', (d) => { return (d.x1+d.x2)/2 })
-        .attr('x2', (d) => { return (d.x1+d.x2)/2 })
-        .attr('y1', (d) => { return (d.x1+d.x2)/2 })
-        .attr('y2', (d) => { return (d.x1+d.x2)/2 })
-
-      setTimeout(() => { shapes.exit().remove() }, after_delay*2)
-
-    } // end shape type loop
   } // end function
 
   function makeRenderingData(given_top="",given_bottom="",given_middle="") {
@@ -435,7 +426,6 @@ module calcsand {  // expression related vars
 
     // reset the data arrays we're (re)building 
     line_data = []
-    ellipse_data = []
 
     // set up local copies and pad shortest term to keep same-significant digits in sync
     var top=given_top, bottom=given_bottom, middle=given_middle, parts=[]
@@ -452,6 +442,7 @@ module calcsand {  // expression related vars
     
     // take each digit from each part in turn
     while (digit_i--) { // loop through each digit, starting with least significant 
+      multiplier = Math.pow(10,digit_inc)
       digit_inc++
       var part_i = parts.length 
       while (part_i--) { // loop (backwards) through each term
@@ -471,10 +462,10 @@ module calcsand {  // expression related vars
             case "", " ":
               break
             case ".":
-              ellipse_data.unshift({ cx: x(50), cy: y(99), rx: x(1), ry: y(1), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+              line_data.unshift({ x1: x(50), y1: y(99), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
               break
             case "0":
-              ellipse_data.unshift({ cx: x(50), cy: y(50), rx: x(1), ry: y(1), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+              line_data.unshift({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
               break
             case "1":
               line_data.unshift({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
@@ -544,8 +535,6 @@ module calcsand {  // expression related vars
         } // end mult_i loop
 
       } // end part_i loop
-
-      multiplier = Math.pow(10,digit_inc)
 
     } // end digit_i loop 
 
