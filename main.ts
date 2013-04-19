@@ -1,9 +1,11 @@
 ﻿/* TODO
+  - fix renderData back to separate passes for ellipses
+  - make the subtract animation  (drag offscreen while top pieces fall into the 'hole' of the bottom)
   - numbers don't fit in horizontal orientation 
+  - handle decimals
   - need method to enter digit zero
   - deal with yuckiness of "offscreen" lines not combining in the right place 
   - make the subtract gesture be drag offscreen
-  - make the subtract animation  (drag offscreen while top pieces fall into the 'hole' of the bottom)
   - make multiply gesture (?)
   - make multiply animation
   - divide
@@ -92,6 +94,7 @@ module calcsand {  // expression related vars
  
     // reposition elements
     resizeDigits()
+    recenterDisplayXYs()
     debug.attr({ x: svg_w / 2, y: svg_h * 0.955 })
     txt.attr({ x: svg_w / 2, y: svg_h * 0.055 })
     window.scrollTo(0, 1);
@@ -237,10 +240,11 @@ module calcsand {  // expression related vars
       .data(touch_list, (d, i) => { return d.identifier })
   }
 
-  function resizeDigits() {
-    digit_w =
-      svg_w / ((answer.length || Math.max(term1.length, term2.length)) +1)
-    digit_h = svg_h / (answer.length? 1 : term2.length ? 2 : 1) 
+  function resizeDigits(digits_high=0,digits_wide=0) {
+    digits_wide = digits_wide || (answer.length? 1 : term2.length ? 2 : 1) 
+    digits_high = digits_high || ((answer.length || Math.max(term1.length, term2.length)) +1)
+    digit_w = svg_w / digits_high 
+    digit_h = svg_h / digits_wide
     digit_x_margin = 0 
     digit_y_margin = digit_h * 0.05 
     digit_w -= digit_x_margin * 2 
@@ -255,7 +259,6 @@ module calcsand {  // expression related vars
     digit_full_h = digit_h + (digit_y_margin*2)
     digit_half_full_w = digit_full_w / 2
     digit_half_full_h = digit_full_h / 2 
-    recenterDisplayXYs()
   }
   
   function recenterDisplayXYs() {
@@ -353,12 +356,21 @@ module calcsand {  // expression related vars
   }
 
   function showExpression() {
-    var duration = 0 
-    if (answer.length) duration = 1000; else duration = 500 
-    resizeDigits()
-    makeRenderingData()
-    renderData(duration)
     updateText() 
+    if (operator == '-' && answer.length) {//animate subtraction answer a bit differtly than others
+      //resizeDigits(2)
+      makeRenderingData(answer, term2)
+      renderData(1000, 0)
+      resizeDigits()
+      recenterDisplayXYs()
+      makeRenderingData(answer)
+      renderData(1000, 1000)
+    } else {
+      resizeDigits()
+      recenterDisplayXYs()
+      makeRenderingData(term1, term2, answer)
+      renderData(1000, 0)
+    }
   }
 
   function updateText() {
@@ -371,15 +383,18 @@ module calcsand {  // expression related vars
     txt.text(exp)
   }
 
-  function renderData(duration=250) {
+  function renderData(duration=250, after_delay=0) {
+
     var lines = svg.selectAll('line').data(line_data)
     var ellipses = svg.selectAll('ellipse').data(ellipse_data)
     var i = 2
 
     while (i--) { // for each shape type
+
       var shapes = [lines, ellipses][i]
+
       shapes
-        .transition().duration(duration)
+        .transition().duration(duration).delay(after_delay)
         .attr('x1', (d) => { return d.x1 })
         .attr('x2', (d) => { return d.x2 })
         .attr('y1', (d) => { return d.y1 })
@@ -387,6 +402,7 @@ module calcsand {  // expression related vars
         .attr('opacity', (d) => { return d.o })
         .attr('stroke-width', (d) => { return d.w })
         .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
+
       shapes
         .enter()
         .append('line')
@@ -397,32 +413,38 @@ module calcsand {  // expression related vars
         .attr('opacity', (d) => { return d.o })
         .attr('stroke-width', (d) => { return d.w })
         .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
+
       shapes
         .exit()
-        .remove()
+        .transition().duration(duration).delay(after_delay)
+        .attr('opacity', (d) => { return 0 })
+        .attr('stroke-width', (d) => { return 0 })
+        .attr('x1', (d) => { return (d.x1+d.x2)/2 })
+        .attr('x2', (d) => { return (d.x1+d.x2)/2 })
+        .attr('y1', (d) => { return (d.x1+d.x2)/2 })
+        .attr('y2', (d) => { return (d.x1+d.x2)/2 })
+
+      setTimeout(() => { shapes.exit().remove() }, after_delay*2)
+
     } // end shape type loop
   } // end function
 
-  function makeRenderingData() {
-    // uses expression parts (e.g. term1, term2, answer etc) and builds arrays of svg attributes for later rendering 
+  function makeRenderingData(given_top="",given_bottom="",given_middle="") {
+    // uses given digit strings to builds arrays of svg attributes for later rendering 
+    // pass parameter indicates which stage of a multi-stage animation this data is for, starting at 0
 
     // reset the data arrays we're (re)building 
     line_data = []
     ellipse_data = []
 
-    // set up to render the appropriate thing based on what we have 
-    var part1 = "", part2 = ""
-    if (answer.length) { part1 = answer } else { part1 = term1; part2 = term2 }
-
-    // pad shortest term with spaces to keep same-significant digits in sync
-    part1 = Array(Math.max(part2.length - part1.length + 1, 0)).join(" ") + (part1 + "")
-    part2 = Array(Math.max(part1.length - part2.length + 1, 0)).join(" ") + (part2 + "")
-  
-    // package parts into an array that we can iterate over
-    var parts = [part1,part2]
+    // set up local copies and pad shortest term to keep same-significant digits in sync
+    var top=given_top, bottom=given_bottom, middle=given_middle, parts=[]
+    top = Array(Math.max(bottom.length - top.length + 1, 0)).join(" ") + (top+ "")
+    bottom = Array(Math.max(top.length - bottom.length + 1, 0)).join(" ") + (bottom+ "")
+    if (middle != "") parts = [middle]; else parts = [top,bottom]
 
     // prep some other vars
-    var max_digits = Math.max(part1.length,part2.length)
+    var max_digits = Math.max(top.length,bottom.length,middle.length) 
     var digit_i = max_digits // this will count down
     var digit_inc = 0  // this will count up
     var multiplier = 1 // this could go up to 10 after 1st digit for more intuitive line group animation
@@ -435,15 +457,15 @@ module calcsand {  // expression related vars
       while (part_i--) { // loop (backwards) through each term
         var digit = parts[part_i].substr(digit_i,1)
         var mult_i = multiplier
-        while (mult_i-- > 0) {
+        while (mult_i-- > 0) { // loop for 'extra' copies of digits in 10s place 100s place etc.
           var y_extra_offset = line_w *3 
-          var y_offset = display_y + Math.round( (digit_full_h * part_i) - (mult_i * y_extra_offset) )
+          var y_offset = display_y + Math.round( (digit_full_h * (part_i) ) - (mult_i * y_extra_offset) )
           if (y_offset < -svg_half_h) { // don't bother with lines that'd render off screen
               mult_i = Math.floor((-svg_half_h - display_y -(digit_full_h * part_i) ) / -y_extra_offset) // solve for the mult_i that doesn't render offscreen
-              y_offset = display_y + Math.round( (digit_full_h * part_i) - (mult_i * y_extra_offset) )
+              y_offset = display_y + Math.round( (digit_full_h * (part_i) ) - (mult_i * y_extra_offset) )
           }
           var x_offset = display_x + Math.round( (digit_full_w * digit_i) + (digit_full_w/2 * mult_i/multiplier ) )
-          var opacity = (mult_i == 0) ? 1 : 0.1
+          var opacity = (mult_i > 0 ) ? 0.1 : 1 
           var scale = (1 - mult_i / multiplier).toFixed(2)
           switch (digit) {
             case "", " ":
