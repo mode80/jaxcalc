@@ -358,16 +358,16 @@ module calcsand {  // expression related vars
     if (operator == '-' && answer.length) {//animate subtraction answer a bit differtly than others
       //resizeDigits(2)
       makeRenderingData(answer, term2)
-      renderData(1000, 0)
+      renderData(2000, 0)
       resizeDigits()
       recenterDisplayXYs()
       makeRenderingData(answer)
-      renderData(1000, 1000)
+      renderData(2000, 2000)
     } else {
       resizeDigits()
       recenterDisplayXYs()
       makeRenderingData(term1, term2, answer)
-      renderData(1000, 0)
+      renderData(2000, 0)
     }
   }
 
@@ -385,19 +385,19 @@ module calcsand {  // expression related vars
 
     var lines = svg.selectAll('line').data(line_data)
 
-    lines 
-      .transition().duration(duration).delay(after_delay)
-      .attr('x1', (d) => { return d.x1 })
-      .attr('x2', (d) => { return d.x2 })
-      .attr('y1', (d) => { return d.y1 })
-      .attr('y2', (d) => { return d.y2 })
-      .attr('opacity', (d) => { return d.o })
-      .attr('stroke-width', (d) => { return d.w })
-      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
-
     lines
       .enter()
       .append('line')
+      .attr('opacity', (d) => { return 0.1 })
+      .attr('stroke-width', (d) => { return 0 })
+      .attr('x1', (d) => { return (d.x1+d.x2)/2 })
+      .attr('x2', (d) => { return (d.x1+d.x2)/2 })
+      .attr('y1', (d) => { return (d.x1+d.x2)/2 })
+      .attr('y2', (d) => { return (d.x1+d.x2)/2 })
+      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
+
+    lines 
+      .transition().duration(duration).delay(after_delay)
       .attr('x1', (d) => { return d.x1 })
       .attr('x2', (d) => { return d.x2 })
       .attr('y1', (d) => { return d.y1 })
@@ -415,6 +415,7 @@ module calcsand {  // expression related vars
       .attr('x2', (d) => { return (d.x1+d.x2)/2 })
       .attr('y1', (d) => { return (d.x1+d.x2)/2 })
       .attr('y2', (d) => { return (d.x1+d.x2)/2 })
+      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
 
     setTimeout(() => { lines.exit().remove() }, after_delay*2)
 
@@ -431,112 +432,112 @@ module calcsand {  // expression related vars
     var top=given_top, bottom=given_bottom, middle=given_middle, parts=[]
     top = Array(Math.max(bottom.length - top.length + 1, 0)).join(" ") + (top+ "")
     bottom = Array(Math.max(top.length - bottom.length + 1, 0)).join(" ") + (bottom+ "")
-    if (middle != "") parts = [middle]; else parts = [top,bottom]
+    var max_digits = top.length
 
     // prep some other vars
-    var max_digits = Math.max(top.length,bottom.length,middle.length) 
-    var digit_i = max_digits // this will count down
-    var digit_inc = 0  // this will count up
-    var multiplier = 1 // this could go up to 10 after 1st digit for more intuitive line group animation
     var line_w = Math.round(digit_w * 0.05) // line width is a percentage of digit width 
+    if (middle != "") parts = [middle]; else parts = [top,bottom]
     
     // take each digit from each part in turn
-    while (digit_i--) { // loop through each digit, starting with least significant 
-      multiplier = Math.pow(10,digit_inc)
-      digit_inc++
-      var part_i = parts.length 
-      while (part_i--) { // loop (backwards) through each term
-        var digit = parts[part_i].substr(digit_i,1)
-        var mult_i = multiplier
-        while (mult_i-- > 0) { // loop for 'extra' copies of digits in 10s place 100s place etc.
-          var y_extra_offset = line_w *3 
-          var y_offset = display_y + Math.round( (digit_full_h * (part_i) ) - (mult_i * y_extra_offset) )
-          if (y_offset < -svg_half_h) { // don't bother with lines that'd render off screen
-              mult_i = Math.floor((-svg_half_h - display_y -(digit_full_h * part_i) ) / -y_extra_offset) // solve for the mult_i that doesn't render offscreen
-              y_offset = display_y + Math.round( (digit_full_h * (part_i) ) - (mult_i * y_extra_offset) )
-          }
-          var x_offset = display_x + Math.round( (digit_full_w * digit_i) + (digit_full_w/2 * mult_i/multiplier ) )
-          var opacity = (mult_i > 0 ) ? 0.1 : 1 
-          var scale = (1 - mult_i / multiplier).toFixed(2)
-          switch (digit) {
-            case "", " ":
-              break
-            case ".":
-              line_data.unshift({ x1: x(50), y1: y(99), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "0":
-              line_data.unshift({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "1":
-              line_data.unshift({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "2":
-              line_data.unshift({ x1: x(80), y1: y(00), x2: x(20), y2: y(93), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(23), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "3":
-              line_data.unshift({ x1: x(20), y1: y(00), x2: x(75), y2: y(44), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(73), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(75), y1: y(56), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "4":
-              line_data.unshift({ x1: x(20), y1: y(00), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(00), x2: x(80), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "5":
-              line_data.unshift({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(95), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(75), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "6":
-              line_data.unshift({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(20), y1: y(94), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "7":
-              line_data.unshift({ x1: x(20), y1: y(25), x2: x(20), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(00), x2: x(76), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(06), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(55), x2: x(80), y2: y(70), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(75), y1: y(75), x2: x(25), y2: y(75), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(20), y1: y(70), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "8":
-              line_data.unshift({ x1: x(75), y1: y(30), x2: x(55), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(55), y1: y(00), x2: x(75), y2: y(20), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(45), y1: y(50), x2: x(25), y2: y(30), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(20), x2: x(45), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(61), x2: x(75), y2: y(61), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(66), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(20), y1: y(94), x2: x(20), y2: y(66), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-            case "9":
-              line_data.unshift({ x1: x(75), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(45), x2: x(80), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(54), y1: y(05), x2: x(70), y2: y(22), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(70), y1: y(28), x2: x(54), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(48), y1: y(45), x2: x(31), y2: y(28), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(31), y1: y(22), x2: x(48), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              line_data.unshift({ x1: x(80), y1: y(55), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
-              break
-          } // end switch
+    for (var pass_i = 0; pass_i < 2; pass_i++) { // make two passes, 1st for 'main' digits, 2nd stack effect digits. This preserves the order we need for the best transition animations
+      for (var digit_i = 0; digit_i < max_digits; digit_i++) {  // loop through each digit, most significant first
+        var multiplier = Math.pow(10, max_digits - digit_i - 1)
+        for (var part_i = 0; part_i < parts.length; part_i++) { // loop through each term
+          var digit = parts[part_i].substr(digit_i, 1)
+          for (var mult_i = 0; mult_i < multiplier; mult_i++) { // loop for 'extra' copies of digits in 10s place 100s place etc.
+            if (mult_i > 0 && pass_i == 0) break // skip stack effect on the main digit pass 
+            if (mult_i == 0 && pass_i == 1) mult_i = 1 //skip main digit on the stack effect pass
+            var y_extra_offset = line_w * 3
+            var y_offset = display_y + Math.round((digit_full_h * (part_i)) - (mult_i * y_extra_offset))
+            //          if (y_offset < -svg_half_h) break
+            //          { // don't bother with lines that'd render off screen
+            //              mult_i = Math.floor((-svg_half_h - display_y -(digit_full_h * part_i) ) / -y_extra_offset) // solve for the mult_i that doesn't render offscreen
+            //              y_offset = display_y + Math.round( (digit_full_h * (part_i) ) - (mult_i * y_extra_offset) )
+            //          }
+            var x_offset = display_x + Math.round((digit_full_w * digit_i) + (digit_full_w / 2 * mult_i / multiplier))
+            var opacity = (mult_i > 0) ? 0.1 : 1
+            var scale = (1 - mult_i / multiplier).toFixed(2)
+            switch (digit) {
+              case "", " ":
+                break
+              case ".":
+                line_data.push({ x1: x(50), y1: y(99), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "0":
+                line_data.push({ x1: x(50), y1: y(50), x2: x(50), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "1":
+                line_data.push({ x1: x(50), y1: y(00), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "2":
+                line_data.push({ x1: x(80), y1: y(00), x2: x(20), y2: y(93), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(23), y1: y(99), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "3":
+                line_data.push({ x1: x(20), y1: y(00), x2: x(75), y2: y(44), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(73), y1: y(50), x2: x(20), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(75), y1: y(56), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "4":
+                line_data.push({ x1: x(20), y1: y(00), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(55), x2: x(80), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(00), x2: x(80), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "5":
+                line_data.push({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(55), x2: x(80), y2: y(95), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(75), y1: y(99), x2: x(20), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "6":
+                line_data.push({ x1: x(80), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(55), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(20), y1: y(94), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "7":
+                line_data.push({ x1: x(20), y1: y(25), x2: x(20), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(00), x2: x(76), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(06), x2: x(35), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(55), x2: x(80), y2: y(70), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(75), y1: y(75), x2: x(25), y2: y(75), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(20), y1: y(70), x2: x(20), y2: y(55), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "8":
+                line_data.push({ x1: x(75), y1: y(30), x2: x(55), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(55), y1: y(00), x2: x(75), y2: y(20), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(45), y1: y(50), x2: x(25), y2: y(30), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(20), x2: x(45), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(61), x2: x(75), y2: y(61), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(66), x2: x(80), y2: y(94), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(75), y1: y(99), x2: x(25), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(20), y1: y(94), x2: x(20), y2: y(66), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+              case "9":
+                line_data.push({ x1: x(75), y1: y(00), x2: x(25), y2: y(00), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(20), y1: y(05), x2: x(20), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(25), y1: y(50), x2: x(75), y2: y(50), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(45), x2: x(80), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(54), y1: y(05), x2: x(70), y2: y(22), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(70), y1: y(28), x2: x(54), y2: y(45), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(48), y1: y(45), x2: x(31), y2: y(28), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(31), y1: y(22), x2: x(48), y2: y(05), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                line_data.push({ x1: x(80), y1: y(55), x2: x(50), y2: y(99), xoff: x_offset, yoff: y_offset, o: opacity, w: line_w, s: scale })
+                break
+            } // end switch
 
-        } // end mult_i loop
+          } // end mult_i loop
 
-      } // end part_i loop
+        } // end part_i loop
 
-    } // end digit_i loop 
+      } // end digit_i loop 
+      
+    } // end pass_i loop
 
   } // end function 
 
