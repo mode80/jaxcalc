@@ -1,11 +1,12 @@
 ﻿/* TODO
-  - limit in/output to 2 rounded digits for now
-  - numbers don't fit in horizontal orientation 
-  - handle decimals
-  - need method to enter digit zero
+  - need a touch method to enter the digit zero
+  - allow terms to be > 2 digits long 
+  - sometimes the animation is not ideal for the concept that's happening
   - deal with yuckiness of "offscreen" lines not combining in the right place 
+  - numbers don't fit in horizontal orientation 
+  - implemenet "remainder" as more natural replacement for decimals
   - make the subtract gesture be drag offscreen
-  - make multiply gesture (?)
+  - make multiply gesture 
   - make multiply animation
   - divide
 */
@@ -265,7 +266,7 @@ module calcsand {  // expression related vars
     if (term2.length) digits_high = 2
     if (term1.length && operator.length) digits_high = 2
     if (term1.length && separator.length) digits_high = 2
-    if (answer.length) { digits_wide = answer.length; digits_high = 1 } 
+    if (answer.length) { digits_wide = answer.length; digits_high = 1 }
     display_x = Math.round(svg_half_w - (digits_wide * digit_half_w))
     display_y = Math.round(svg_half_h - (digits_high * digit_half_h))
   }
@@ -298,6 +299,8 @@ module calcsand {  // expression related vars
     if (isDigit(input)) { 
       if (answer.length) resetToStart() // autoclear on first digit after former answer
       if (separator.length) { term2 += input } else { term1 += input }
+      if (term1.length > 2) term1 = term1.slice(0,2) // limit term to two digits for now
+      if (term2.length > 2) term2 = term2.slice(0,2) // limit term to two digits for now
     }
     // SEPARATOR
     if (input == INPUT.SEPARATE) {
@@ -543,8 +546,8 @@ module calcsand {  // expression related vars
   function x(d) { return Math.round(d * digit_w/100) } // scales widths of 0-100 to pixels
   function y(d) { return Math.round(d * digit_h/100) } // scales heights of 0-100 to pixels
 
-  function isDigit(char: string): bool { return ("1234567890.".indexOf(char) >= 0) }
-  function isOperator(char: string): bool { return ("*-+/".indexOf(char) >= 0) }
+  function isDigit(char: string): bool { return ("1234567890".indexOf(char) >= 0) }
+  function isOperator(char: string): bool { return (char.length && "*-+/".indexOf(char) >= 0) }
 
   function hypotenuse(x1,y1,x2,y2){return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))} // diagonal distance between two point cooridnates
 
