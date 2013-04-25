@@ -1,5 +1,5 @@
 ﻿/* TODO
-  - make the subtract animation  (drag offscreen while top pieces fall into the 'hole' of the bottom)
+  - limit in/output to 2 rounded digits for now
   - numbers don't fit in horizontal orientation 
   - handle decimals
   - need method to enter digit zero
@@ -239,8 +239,8 @@ module calcsand {  // expression related vars
   }
 
   function resizeDigits(digits_high=0,digits_wide=0) {
-    digits_wide = digits_wide || (answer.length? 1 : term2.length ? 2 : 1) 
-    digits_high = digits_high || ((answer.length || Math.max(term1.length, term2.length)) +1)
+    digits_wide = digits_wide || (answer.length ? 1 : term2.length ? 2 : 1)
+    digits_high = digits_high || ((answer.length || Math.max(term1.length, term2.length)) + 1)
     digit_w = svg_w / digits_high 
     digit_h = svg_h / digits_wide
     digit_x_margin = 0 
@@ -266,8 +266,8 @@ module calcsand {  // expression related vars
     if (term1.length && operator.length) digits_high = 2
     if (term1.length && separator.length) digits_high = 2
     if (answer.length) { digits_wide = answer.length; digits_high = 1 } 
-    display_x = Math.round(svg_half_w - (digits_wide * digit_half_w) )
-    display_y = Math.round(svg_half_h - (digits_high * digit_half_h) )
+    display_x = Math.round(svg_half_w - (digits_wide * digit_half_w))
+    display_y = Math.round(svg_half_h - (digits_high * digit_half_h))
   }
 
   function remakeBorder() {
@@ -290,7 +290,7 @@ module calcsand {  // expression related vars
     if (input == INPUT.BACKSPACE  ) {
       if (answer.length) { processInput(INPUT.CLEAR); return} // for an answer, treat backspace like clear
       if (term2.length) term2 = term2.slice(0, -1)
-      else if (term1.length) term1 = term1.slice(0,-1)
+      else if (term1.length) term1 = term1.slice(0, -1)
       else if (operator.length) operator = "" 
       else if (separator.length) separator= "" 
     }
@@ -340,7 +340,7 @@ module calcsand {  // expression related vars
 
   function findAnswer() {
     try {
-      answer = eval(term1 + operator + term2) + ""
+      answer = Math.round(eval(term1 + operator + term2)) + ""
     } catch (e) {
       answer = "" 
     }
@@ -358,16 +358,16 @@ module calcsand {  // expression related vars
     if (operator == '-' && answer.length) {//animate subtraction answer a bit differtly than others
       //resizeDigits(2)
       makeRenderingData(answer, term2)
-      renderData(1000, 0)
+      renderData(500, 0)
       resizeDigits()
       recenterDisplayXYs()
       makeRenderingData(answer)
-      renderData(1000, 1000)
+      renderData(500, 500)
     } else {
       resizeDigits()
       recenterDisplayXYs()
       makeRenderingData(term1, term2, answer)
-      renderData(1000, 0)
+      renderData(500, 0)
     }
   }
 
@@ -385,19 +385,19 @@ module calcsand {  // expression related vars
 
     var lines = svg.selectAll('line').data(line_data)
 
-    lines 
-      .transition().duration(duration).delay(after_delay)
-      .attr('x1', (d) => { return d.x1 })
-      .attr('x2', (d) => { return d.x2 })
-      .attr('y1', (d) => { return d.y1 })
-      .attr('y2', (d) => { return d.y2 })
-      .attr('opacity', (d) => { return d.o })
-      .attr('stroke-width', (d) => { return d.w })
-      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
-
     lines
       .enter()
       .append('line')
+      .attr('x1', (d) => { return (d.x1+d.x2)/2 })
+      .attr('x2', (d) => { return (d.x1+d.x2)/2 })
+      .attr('y1', (d) => { return (d.x1+d.x2)/2 })
+      .attr('y2', (d) => { return (d.x1+d.x2)/2 })
+      .attr('opacity', (d) => { return 0.1 })
+      .attr('stroke-width', (d) => { return 0 })
+      .attr('transform', (d) => { return 'translate(' + d.xoff + ',' + d.yoff + ') scale(' + d.s + ')' })
+
+    lines 
+      .transition().duration(duration).delay(after_delay)
       .attr('x1', (d) => { return d.x1 })
       .attr('x2', (d) => { return d.x2 })
       .attr('y1', (d) => { return d.y1 })
