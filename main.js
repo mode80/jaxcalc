@@ -1,9 +1,11 @@
 /* TODO
+- fix text display on horizontal orientation
+- fix wrong centering of existing renders on orientation change
+- remove leftover hammerjs files
 - need a touch method to enter the digit zero
 - allow terms to be > 2 digits long
 - sometimes the animation is not ideal for the concept that's happening
 - deal with yuckiness of "offscreen" lines not combining in the right place
-- numbers don't fit in horizontal orientation
 - implemenet "remainder" as more natural replacement for decimals
 - make the subtract gesture be drag offscreen
 - make multiply gesture
@@ -89,33 +91,33 @@ var calcsand;
     }
     function onOrientationChange() {
         var degrees_turned = win.orientation || 0;
-        if(degrees_turned == 0 || degrees_turned == 180) {
-            svg_w = short_side;
-            svg_h = long_side;
-        } else {
-            svg_w = long_side;
-            svg_h = short_side;
-        }
+        svg_w = window.innerWidth;
+        svg_h = window.innerHeight;
         //svg.attr('viewBox', '0 0 ' + svg_w + ' ' + svg_h)
-        //svg.attr('preserveAspectRatio', 'none')
-        svg.attr({
-            width: svg_w,
-            height: svg_h
-        });
-        // reposition elements
-        resizeDigits();
-        recenterDisplayXYs();
-        debug.attr({
-            x: svg_w / 2,
-            y: svg_h * 0.955
-        });
-        txt.attr({
-            x: svg_w / 2,
-            y: svg_h * 0.055
-        });
-        window.scrollTo(0, 1);
-        renderData();
-        remakeBorder();
+        //svg.attr('preserveAspectRatio', 'xMinYmin')
+        setTimeout(afterDone, 100)//weird things happen if we don't wait for orientation event to finish
+        ;
+        function afterDone() {
+            svg.attr({
+                width: svg_w,
+                height: svg_h
+            });
+            txt.style('font-size', Math.max(svg_w, svg_h) / 20 + 'px');
+            // reposition elements
+            resizeDigits();
+            recenterDisplayXYs();
+            debug.attr({
+                x: svg_w / 2,
+                y: svg_h * 0.955
+            });
+            txt.attr({
+                x: svg_w / 2,
+                y: svg_h * 0.055
+            });
+            window.scrollTo(0, 1);
+            renderData();
+            remakeBorder();
+        }
     }
     function onKeyPress(e) {
         // translate keystrokes into generic input
@@ -269,13 +271,13 @@ var calcsand;
         digits_wide = digits_wide || (answer.length ? 1 : term2.length ? 2 : 1);
         digits_high = digits_high || ((answer.length || Math.max(term1.length, term2.length)) + 1);
         digit_w = svg_w / digits_high;
-        digit_h = svg_h / digits_wide;
+        digit_h = Math.min(svg_h / digits_wide, svg_h * .4);
+        digit_w = Math.min(digit_w, digit_h);
+        digit_h = Math.min(digit_w, digit_h);
         digit_x_margin = 0;
         digit_y_margin = digit_h * 0.05;
         digit_w -= digit_x_margin * 2;
         digit_h -= digit_y_margin * 2;
-        digit_w = Math.min(digit_w, digit_h);
-        digit_h = Math.min(digit_w, digit_h);
         svg_half_w = svg_w / 2;
         svg_half_h = svg_h / 2;
         digit_half_w = digit_w / 2;
