@@ -1,4 +1,4 @@
-﻿/* TODO
+/* TODO
   - fix text display on horizontal orientation  
   - fix wrong centering of existing renders on orientation change
   - remove leftover hammerjs files 
@@ -14,7 +14,7 @@
 */
 
 /// <reference path="d3.d.ts" />
-/// <reference path="sugar.d.ts" />
+/// <reference path="underscore.d.ts" />
 /// <reference path="custom.d.ts" />
 
 module calcsand {  // expression related vars
@@ -64,9 +64,6 @@ module calcsand {  // expression related vars
   main() // lets do this
 
   function main() {
-    
-    // extend default objects with sugar
-      Object.extend()
 
     // setup drawing space
       onOrientationChange()
@@ -119,14 +116,14 @@ module calcsand {  // expression related vars
     processInput(input)
   }
 
-  function onTouchStart(e) {
+  function onTouchStart(e:TouchEvent) {
 
     e.preventDefault() 
 
     var len = e.changedTouches.length
     while (len--) {
       var id = e.changedTouches[len].identifier
-      start_touches[id] = e.changedTouches[len].clone()
+      start_touches[id] = _.clone(e.changedTouches[len])
       start_touches[id].timestamp = Date.now()
     }
 
@@ -143,7 +140,7 @@ module calcsand {  // expression related vars
         .attr("opacity", 0.2)
   }
 
-  function onTouchMove(e) {
+  function onTouchMove(e:TouchEvent) {
 
     e.preventDefault()
 
@@ -155,7 +152,7 @@ module calcsand {  // expression related vars
 
   }
 
-  function onTouchEnd(e) {
+  function onTouchEnd(e:TouchEvent) {
 
     e.preventDefault()
 
@@ -238,9 +235,9 @@ module calcsand {  // expression related vars
       
   } // end onTouchEnd
 
-  function touchLines(touch_list) {
+  function touchLines(touch_list: TouchList) : D3.UpdateSelection {
     return svg.selectAll("line.touch")
-      .data(touch_list, (d, i) => { return d.identifier })
+      .data(touch_list, (d) => { return d.identifier })
   }
 
   function resizeDigits(digits_high=0,digits_wide=0) {
@@ -550,9 +547,10 @@ module calcsand {  // expression related vars
   function x(d) { return Math.round(d * digit_w/100) } // scales widths of 0-100 to pixels
   function y(d) { return Math.round(d * digit_h/100) } // scales heights of 0-100 to pixels
 
-  function isDigit(char: string): bool { return ("1234567890".indexOf(char) >= 0) }
-  function isOperator(char: string): bool { return (char.length && "*-+/".indexOf(char) >= 0) }
+  function isDigit(char: string): boolean { return ("1234567890".indexOf(char) >= 0) }
+  function isOperator(char: string): boolean { return (char.length && "*-+/".indexOf(char) >= 0) }
 
   function hypotenuse(x1,y1,x2,y2){return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))} // diagonal distance between two point cooridnates
+
 
 } // end module
